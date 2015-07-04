@@ -12,6 +12,9 @@ Requirements
 This module / script collection use the following modules (available on CPAN):
 * FPC 2.6.4+ (others untested)
 * Synapse
+* libeay32.dll
+* libssl32.dll
+* ssleay32.dll
 
 How does it work?
 =================
