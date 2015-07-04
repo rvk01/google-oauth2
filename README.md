@@ -9,7 +9,6 @@ This can be used to do XOAUTH2 for sending mail via GMail
 Requirements
 ============
 
-This module / script collection use the following modules (available on CPAN):
 * FPC 2.6.4+ (others untested)
 * Synapse
 * libeay32.dll
