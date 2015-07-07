@@ -6,7 +6,7 @@
     <General>
       <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
-      <Title Value="xoauth2_test"/>
+      <Title Value="test_oauth2"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
       <Icon Value="0"/>
@@ -40,7 +40,7 @@
     </RequiredPackages>
     <Units Count="2">
       <Unit0>
-        <Filename Value="xoauth2_test.lpr"/>
+        <Filename Value="test_oauth2.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>
@@ -57,7 +57,7 @@
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="xoauth2_test"/>
+      <Filename Value="test_oauth2"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>

@@ -5,7 +5,8 @@ unit frmMain;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls;
+  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
+  ComCtrls, ExtCtrls;
 
 type
 
@@ -16,6 +17,8 @@ type
     Button2: TButton;
     Button3: TButton;
     Button4: TButton;
+    CheckGroup1: TCheckGroup;
+    edBody: TMemo;
     edRecipient: TEdit;
     edSender: TEdit;
     edSubject: TEdit;
@@ -23,11 +26,18 @@ type
     Label2: TLabel;
     Label3: TLabel;
     Memo1: TMemo;
-    edBody: TMemo;
+    PageControl1: TPageControl;
+    PageControl2: TPageControl;
+    TabSheet1: TTabSheet;
+    TabSheet2: TTabSheet;
+    TabSheet3: TTabSheet;
+    TabSheet4: TTabSheet;
+    TabSheet5: TTabSheet;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     { private declarations }
   public
@@ -50,15 +60,35 @@ const
   client_id = '896304839415-nnl5e0smrtakhr9r2l3bno0tes2mrtgk.apps.googleusercontent.com';
   client_secret = 'dUahHDn3IMyhCIk3qD4tf8E_';
 
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+  if CheckGroup1.Items.Count > 2 then
+  begin
+    CheckGroup1.Checked[0] := True;
+    CheckGroup1.Checked[1] := True;
+    CheckGroup1.Checked[2] := True;
+    CheckGroup1.CheckEnabled[0] := false;
+    CheckGroup1.CheckEnabled[1] := false;
+  end;
+end;
+
 procedure TForm1.Button1Click(Sender: TObject);
 var
   gApi: TGoogleOAuth2;
+  Scopes: GoogleScopeSet;
 begin
   // Onetime authentication
   // Save tokens to token.dat
   gApi := TGoogleOAuth2.Create(client_id, client_secret);
   gApi.DebugMemo := Memo1;
-  gApi.GetAccess([goMail], true); // <- get from file
+
+  Scopes := [];
+  if CheckGroup1.Checked[2] then Include(Scopes, goMail);
+  if CheckGroup1.Checked[3] then Include(Scopes, goCalendar);
+  if CheckGroup1.Checked[4] then Include(Scopes, goContacts);
+  if CheckGroup1.Checked[5] then Include(Scopes, goDrive);
+
+  gApi.GetAccess(Scopes, True); // <- get from file
 
   if gApi.EMail <> '' then
     edSender.Text := format('%s <%s>', [gApi.FullName, gApi.EMail]);
@@ -120,7 +150,7 @@ begin
 
     // first get oauthToken
     gApi.DebugMemo := Memo1;
-    gApi.GetAccess([goMail], true); // <- get from file
+    gApi.GetAccess([goMail], True); // <- get from file
     if gApi.EMail = '' then
       exit;
 

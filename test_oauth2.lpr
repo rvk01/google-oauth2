@@ -1,4 +1,4 @@
-program xoauth2_test;
+program test_oauth2;
 
 {$mode objfpc}{$H+}
 
