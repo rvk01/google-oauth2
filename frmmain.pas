@@ -66,10 +66,17 @@ begin
   begin
     CheckGroup1.Checked[0] := True;
     CheckGroup1.Checked[1] := True;
-    CheckGroup1.Checked[2] := True;
-    CheckGroup1.CheckEnabled[0] := false;
-    CheckGroup1.CheckEnabled[1] := false;
+    CheckGroup1.Checked[3] := True;
+    CheckGroup1.CheckEnabled[0] := False;
+    CheckGroup1.CheckEnabled[1] := False;
+    CheckGroup1.CheckEnabled[2] := False;
+    CheckGroup1.CheckEnabled[4] := false;
   end;
+
+  // why doesn't this "stick" in the ide (trunk) when Align = alBottom ??
+  PageControl1.Anchors := [akLeft, akTop];
+  edBody.Anchors := [akLeft, akTop];
+
 end;
 
 procedure TForm1.Button1Click(Sender: TObject);
@@ -83,10 +90,16 @@ begin
   gApi.DebugMemo := Memo1;
 
   Scopes := [];
-  if CheckGroup1.Checked[2] then Include(Scopes, goMail);
-  if CheckGroup1.Checked[3] then Include(Scopes, goCalendar);
-  if CheckGroup1.Checked[4] then Include(Scopes, goContacts);
-  if CheckGroup1.Checked[5] then Include(Scopes, goDrive);
+  if CheckGroup1.Checked[3] then
+    Include(Scopes, goMail);
+  if CheckGroup1.Checked[4] then
+    Include(Scopes, goMailSendOnly);
+  if CheckGroup1.Checked[5] then
+    Include(Scopes, goContacts);
+  if CheckGroup1.Checked[6] then
+    Include(Scopes, goCalendar);
+  if CheckGroup1.Checked[7] then
+    Include(Scopes, goDrive);
 
   gApi.GetAccess(Scopes, True); // <- get from file
 
