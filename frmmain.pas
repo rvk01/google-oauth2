@@ -66,11 +66,9 @@ begin
   begin
     CheckGroup1.Checked[0] := True;
     CheckGroup1.Checked[1] := True;
-    CheckGroup1.Checked[3] := True;
+    CheckGroup1.Checked[2] := True;
     CheckGroup1.CheckEnabled[0] := False;
     CheckGroup1.CheckEnabled[1] := False;
-    CheckGroup1.CheckEnabled[2] := False;
-    CheckGroup1.CheckEnabled[4] := false;
   end;
 
   // why doesn't this "stick" in the ide (trunk) when Align = alBottom ??
@@ -90,15 +88,13 @@ begin
   gApi.DebugMemo := Memo1;
 
   Scopes := [];
-  if CheckGroup1.Checked[3] then
+  if CheckGroup1.Checked[2] then
     Include(Scopes, goMail);
-  if CheckGroup1.Checked[4] then
-    Include(Scopes, goMailSendOnly);
-  if CheckGroup1.Checked[5] then
+  if CheckGroup1.Checked[3] then
     Include(Scopes, goContacts);
-  if CheckGroup1.Checked[6] then
+  if CheckGroup1.Checked[4] then
     Include(Scopes, goCalendar);
-  if CheckGroup1.Checked[7] then
+  if CheckGroup1.Checked[5] then
     Include(Scopes, goDrive);
 
   gApi.GetAccess(Scopes, True); // <- get from file
@@ -122,6 +118,7 @@ type
   TmySMTPSend = class helper for TSMTPSend
   public
     function DoXOAuth2(const Value: string): boolean;
+    function ChallengeError(): String;
   end;
 
 
@@ -138,6 +135,22 @@ begin
   until Pos('-', s) <> 4;
   x := StrToIntDef(Copy(s, 1, 3), 0);
   Result := (x = 235);
+end;
+
+function TmySMTPSend.ChallengeError(): String;
+var
+  s: string;
+begin
+  Result := '';
+  Sock.SendString('' + CRLF);
+  repeat
+    s := Sock.RecvString(FTimeout);
+    if Sock.LastError <> 0 then
+      Break;
+    if Result <> '' then
+      Result := Result + CRLF;
+    Result := Result + s;
+  until Pos('-', s) <> 4;
 end;
 
 // -----------------------------------------------------
@@ -193,7 +206,7 @@ begin
     AddToLog('XOAUTH2');
     if not smtp.DoXOAuth2(gApi.GetXOAuth2Base64) then
     begin
-      AddToLog('XOAUTH2 ERROR');
+      AddToLog('XOAUTH2 ERROR: ' + CRLF + smtp.ChallengeError());
       exit;
     end;
 

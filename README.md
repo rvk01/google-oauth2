@@ -30,6 +30,10 @@ https://developers.google.com/identity/protocols/OpenIDConnect#getcredentials
 
 Currently the provided credentials do work for the test-application.
 
+Note: The sope for composing mail `https://www.googleapis.com/auth/gmail.compose` is not
+enhough to mail via smtp. Smtp access requires full mail-access.
+
+
 Further Resources
 =================
 * https://developers.google.com/accounts/docs/OAuth2InstalledApp

@@ -58,7 +58,7 @@ uses
   fpjson, jsonparser;
 
 type
-  GoogleScope = (goMail, goMailSendOnly, goContacts, goCalendar, goDrive);
+  GoogleScope = (goMail, goContacts, goCalendar, goDrive);
   GoogleScopeSet = set of GoogleScope;
 
 type
@@ -216,14 +216,8 @@ begin
     FScopes.Add('https://www.googleapis.com/auth/calendar');
   end;
 
-  // no need for SendOnly if we got full access
-  if goMail in Scopes then Exclude(Scopes, goMailSendOnly);
-
   if goMail in Scopes then
     FScopes.Add('https://mail.google.com/');
-
-  if goMailSendOnly in Scopes then
-    FScopes.Add('https://www.googleapis.com/auth/gmail.compose');
 
   if goContacts in Scopes then
     FScopes.Add('https://www.google.com/m8/feeds/');

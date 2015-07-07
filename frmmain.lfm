@@ -186,7 +186,7 @@ object Form1: TForm1
     ChildSizing.ShrinkHorizontal = crsScaleChilds
     ChildSizing.ShrinkVertical = crsScaleChilds
     ChildSizing.Layout = cclTopToBottomThenLeftToRight
-    ChildSizing.ControlsPerLine = 3
+    ChildSizing.ControlsPerLine = 2
     ClientHeight = 76
     ClientWidth = 763
     ColumnLayout = clVerticalThenHorizontal
@@ -194,16 +194,14 @@ object Form1: TForm1
     Items.Strings = (
       'profile (info only)'
       'email (info only)'
-      '-'
       'Access to Mail'
-      'Send mail only (doesn''t work yet)'
       'Access to Contacts'
       'Access to Calendar'
       'Access to Drive'
     )
     TabOrder = 5
     Data = {
-      080000000202020202020202
+      06000000020202020202
     }
   end
 end
