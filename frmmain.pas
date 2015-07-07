@@ -14,13 +14,20 @@ type
   TForm1 = class(TForm)
     Button1: TButton;
     Button2: TButton;
+    Button3: TButton;
+    Button4: TButton;
     edRecipient: TEdit;
     edSender: TEdit;
     edSubject: TEdit;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
     Memo1: TMemo;
     edBody: TMemo;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure Button4Click(Sender: TObject);
   private
     { private declarations }
   public
@@ -51,7 +58,11 @@ begin
   // Save tokens to token.dat
   gApi := TGoogleOAuth2.Create(client_id, client_secret);
   gApi.DebugMemo := Memo1;
-  gApi.GetAccess([goMail], True); // <- get from file
+  gApi.GetAccess([goMail], true); // <- get from file
+
+  if gApi.EMail <> '' then
+    edSender.Text := format('%s <%s>', [gApi.FullName, gApi.EMail]);
+
 end;
 
 procedure AddToLog(Str: string);
@@ -109,11 +120,13 @@ begin
 
     // first get oauthToken
     gApi.DebugMemo := Memo1;
-    gApi.GetAccess([goMail], True); // <- get from file
-    if gApi.Access_token = '' then
+    gApi.GetAccess([goMail], true); // <- get from file
+    if gApi.EMail = '' then
       exit;
 
-    msg_lines.Add(format('From: %s <%s>', [gApi.FullName, gApi.EMail]));
+    edSender.Text := format('%s <%s>', [gApi.FullName, gApi.EMail]);
+
+    msg_lines.Add('From: ' + edSender.Text);
     msg_lines.Add('To: ' + edRecipient.Text);
     msg_lines.Add('Subject: ' + edSubject.Text);
     msg_lines.Add('');
@@ -174,6 +187,28 @@ begin
     Button2.Enabled := True;
   end;
 
+end;
+
+procedure TForm1.Button3Click(Sender: TObject);
+begin
+  if not FileExists('tokens.dat') then
+  begin
+    AddToLog('tokens.dat didn''t exist');
+    exit;
+  end;
+
+  Deletefile('tokens.dat');
+
+  if not FileExists('tokens.dat') then
+    AddToLog('tokens.dat deleted')
+  else
+    AddToLog('error while removing tokens.dat');
+
+end;
+
+procedure TForm1.Button4Click(Sender: TObject);
+begin
+  Memo1.Clear;
 end;
 
 end.

@@ -42,4 +42,6 @@ Further Resources
 Todo
 ====
 
-*
+* convert for delphi compatibility
+* maybe make token_filename changable
+* improve the documentation and comments

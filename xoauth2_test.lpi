@@ -38,7 +38,7 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="3">
+    <Units Count="2">
       <Unit0>
         <Filename Value="xoauth2_test.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -51,10 +51,6 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frmMain"/>
       </Unit1>
-      <Unit2>
-        <Filename Value="C:\Dev\extras\synapse\ssl_openssl.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit2>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -65,7 +61,6 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="C:\Dev\extras\synapse\"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>
@@ -76,4 +71,20 @@
       </Options>
     </Linking>
   </CompilerOptions>
+  <Debugging>
+    <Exceptions Count="4">
+      <Item1>
+        <Name Value="EAbort"/>
+      </Item1>
+      <Item2>
+        <Name Value="ECodetoolError"/>
+      </Item2>
+      <Item3>
+        <Name Value="EFOpenError"/>
+      </Item3>
+      <Item4>
+        <Name Value="EOleSysError"/>
+      </Item4>
+    </Exceptions>
+  </Debugging>
 </CONFIG>

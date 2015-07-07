@@ -37,9 +37,15 @@
   https://developers.google.com/google-apps/calendar/
   http://masashi-k.blogspot.nl/2013/06/sending-mail-with-gmail-using-xoauth2.html
 
+  2015-07-07 some extra debug information
+  2015-07-07 initial getinformation only done when access_token is not empty
+  2015-07-07 extra variable Tokens_refreshed to indicate you need to save the tokens
+  2015-07-04 initial release
+
 }
 // todo: convert for delphi compatibility
 // todo: maybe make token_filename changable
+// todo: improve the documentation and comments
 
 unit google_oauth2;
 
@@ -64,6 +70,7 @@ type
     FAuthorize_token: string;
     FRefresh_token: string;
     FAccess_token: string;
+    FTokens_refreshed: boolean;
     FScopes: TStringList;
     FLastErrorCode: string;
     FLastErrorMessage: string;
@@ -86,6 +93,7 @@ type
     function GetXOAuth2Base64: string;
     procedure DebugLine(Value: string);
 
+    property Tokens_refreshed: boolean read FTokens_refreshed write FTokens_refreshed;
     property Authorize_token: string read FAuthorize_token write FAuthorize_token;
     property Refresh_token: string read FRefresh_token write FRefresh_token;
     property Access_token: string read FAccess_token write FAccess_token;
@@ -96,7 +104,6 @@ type
     property DebugMemo: TMemo read FDebugMemo write FDebugMemo;
 
   end;
-
 
 implementation
 
@@ -131,6 +138,7 @@ begin
   inherited Create;
   FClient_id := client_id;
   FClient_secret := client_secret;
+  Tokens_refreshed := False;
   FScopes := TStringList.Create;
   FScopes.Delimiter := ' ';
   FScopes.QuoteChar := ' ';
@@ -218,40 +226,55 @@ begin
     FScopes.Add('https://www.googleapis.com/auth/drive');
 
   if UseTokenFile then
-    LoadAccessRefreshTokens;
+    LoadAccessRefreshTokens
+  else
+  begin
+    // DebugLine('If you had an access_token please set it before calling GetAccess');
+  end;
 
-  DebugLine('Getting account information');
   Fullname := '';
   EMail := '';
-  GetInformation;
-  if LastErrorCode <> '' then
+  if access_token <> '' then
   begin
-    DebugLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
-    DebugLine(Format('Invalid access_token %s', [access_token]));
-    Access_token := ''; // <- invalidate
+    DebugLine('Getting account information');
+    GetInformation;
+  end;
+  if (LastErrorCode <> '') or (access_token = '') then
+  begin
+    if access_token <> '' then
+    begin
+      DebugLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
+      DebugLine(Format('Invalid access_token %s', [access_token]));
+      Access_token := ''; // <- invalidate
+    end;
     GetAccess_token;
     if access_token <> '' then
     begin
-      DebugLine('Refreshing account information');
+      DebugLine('Getting account information');
       GetInformation;
-      if UseTokenFile and (EMail <> '') then
-        SaveAccessRefreshTokens;
+      if (EMail <> '') then
+      begin
+        Tokens_refreshed := True; // and correct
+        if UseTokenFile then
+          SaveAccessRefreshTokens
+        else
+          DebugLine('Please save the access_token');
+      end;
     end;
   end;
 
-  if Fullname <> '' then
-    DebugLine(Format('Fullname is %s', [Fullname]));
   if EMail <> '' then
-    DebugLine(Format('E-Mail is %s', [EMail]));
+    DebugLine(Format('%s <%s>', [Fullname, EMail]));
   if LastErrorCode <> '' then
     DebugLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
   if EMail <> '' then
-    DebugLine('You now have access')
+    DebugLine('We now have access')
   else
-    DebugLine('You don''t have access');
+    DebugLine('We don''t have access');
 
 end;
 
+// this is used for encoding the access_token for XOAUTH2 in gmail
 function TGoogleOAuth2.GetXOAuth2Base64: string;
 begin
   Result := 'user=%s' + #1 + 'auth=Bearer %s' + #1 + #1;
@@ -273,7 +296,7 @@ begin
       J := P.Parse;
       refresh_token := RetrieveJSONValue(J, 'refresh_token');
       access_token := RetrieveJSONValue(J, 'access_token');
-      DebugLine('tokens restored from ' + token_filename);
+      DebugLine('Tokens restored from ' + token_filename);
     finally
       if assigned(J) then
         J.Free;
@@ -294,7 +317,7 @@ begin
       try
         Add(J.AsJSON);
         SaveToFile(token_filename);
-        DebugLine('tokens saved to ' + token_filename);
+        DebugLine('Tokens saved to ' + token_filename);
       finally
         Free;
       end;
@@ -365,11 +388,14 @@ begin
         begin
           System.Delete(Found, 1, Pos(SearchFor, Found) + Length(SearchFor) - 1);
           if Pos('">', Found) > 0 then
-          begin
             Authorize_token := Copy(Found, 1, Pos('">', Found) - 1);
-          end;
         end;
       end;
+
+      if Authorize_token <> '' then
+        DebugLine('Autorization accepted')
+      else
+        DebugLine('Autorization not accepted');
 
       Browser.Quit;
 
@@ -394,6 +420,8 @@ var
 begin
   LastErrorCode := '';
   LastErrorMessage := '';
+
+  // If we haven't got a Authentication token we need to ask permission
   if Authorize_token = '' then
     GetAuthorize_token_interactive;
   if Authorize_token = '' then
@@ -426,7 +454,7 @@ begin
         refresh_token := RetrieveJSONValue(J, 'refresh_token');
         access_token := RetrieveJSONValue(J, 'access_token');
         if access_token <> '' then
-          DebugLine(Format('New access_token %s', [access_token]));
+          DebugLine('New refresh- & access_token received');
       finally
         if assigned(J) then
           J.Free;
@@ -449,12 +477,14 @@ var
 begin
   LastErrorCode := '';
   LastErrorMessage := '';
+
+  // If we haven't got a refresh token we need to get one or possibly re-authenticate
   if Refresh_token = '' then
     GetRefresh_token;
   if Refresh_token = '' then
     exit;
   if Access_token <> '' then
-    exit; // already received via getrefresh_token
+    exit; // we already received via getrefresh_token, so we can exit
 
   DebugLine('Getting new Access_token');
   URL := GetTokenUrl;
@@ -484,7 +514,7 @@ begin
         end;
         access_token := RetrieveJSONValue(J, 'access_token');
         if access_token <> '' then
-          DebugLine(Format('New access_token %s', [access_token]));
+          DebugLine('New access_token received');
       finally
         if assigned(J) then
           J.Free;
