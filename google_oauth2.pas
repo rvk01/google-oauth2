@@ -32,11 +32,14 @@
   Purpose:
   With this unit (class TGoogleOAuth2) you can get access to the Google apis
 
+  https://developers.google.com/identity/protocols/OpenIDConnect#getcredentials
   https://developers.google.com/accounts/docs/OAuth2InstalledApp
   https://developers.google.com/oauthplayground/
   https://developers.google.com/google-apps/calendar/
   http://masashi-k.blogspot.nl/2013/06/sending-mail-with-gmail-using-xoauth2.html
 
+  2015-07-08 usebrowsertitle to get the auth.code from the title-bar (which sometimes didn't work)
+  2015-07-08 implemented focemanualauth so you always need to enter auth.code manually
   2015-07-07 some extra debug information
   2015-07-07 initial getinformation only done when access_token is not empty
   2015-07-07 extra variable Tokens_refreshed to indicate you need to save the tokens
@@ -71,11 +74,14 @@ type
     FRefresh_token: string;
     FAccess_token: string;
     FTokens_refreshed: boolean;
+    FForceManualAuth: boolean;
+    FUseBrowserTitle: boolean;
     FScopes: TStringList;
     FLastErrorCode: string;
     FLastErrorMessage: string;
     FFullname: string;
     FEMail: string;
+    FLogMemo: TMemo;
     FDebugMemo: TMemo;
   private
     procedure LoadAccessRefreshTokens;
@@ -83,24 +89,28 @@ type
     procedure GetAuthorize_token_interactive;
     procedure GetRefresh_token;
     procedure GetAccess_token;
-    function RetrieveJSONValue(JSON: TJSONData; Value: string): string;
   public
     { public declarations }
     constructor Create(client_id, client_secret: string); virtual;
     destructor Destroy; override;
+    function RetrieveJSONValue(JSON: TJSONData; Value: string): string;
 
     procedure GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boolean = False);
     function GetXOAuth2Base64: string;
+    procedure LogLine(Value: string);
     procedure DebugLine(Value: string);
 
     property Tokens_refreshed: boolean read FTokens_refreshed write FTokens_refreshed;
     property Authorize_token: string read FAuthorize_token write FAuthorize_token;
     property Refresh_token: string read FRefresh_token write FRefresh_token;
     property Access_token: string read FAccess_token write FAccess_token;
+    property ForceManualAuth: boolean read FForceManualAuth write FForceManualAuth;
+    property UseBrowserTitle: boolean read FUseBrowserTitle write FUseBrowserTitle;
     property LastErrorCode: string read FLastErrorCode write FLastErrorCode;
     property LastErrorMessage: string read FLastErrorMessage write FLastErrorMessage;
     property Fullname: string read FFullname write FFullname;
     property EMail: string read FEMail write FEMail;
+    property LogMemo: TMemo read FLogMemo write FLogMemo;
     property DebugMemo: TMemo read FDebugMemo write FDebugMemo;
 
   end;
@@ -112,6 +122,7 @@ uses
   ssl_openssl, // you need to include this one in your requirements
   comobj, // for ceating Browser-object
   base64, // for the XOAuth2 token
+  Dialogs, // for inputbox
   Forms; // for Screen.Width/Height
 
 const
@@ -138,7 +149,18 @@ begin
   inherited Create;
   FClient_id := client_id;
   FClient_secret := client_secret;
-  Tokens_refreshed := False;
+  FAuthorize_token := '';
+  FRefresh_token := '';
+  FAccess_token := '';
+  FTokens_refreshed := False;
+  FForceManualAuth := False;
+  FUseBrowserTitle := True;
+  FLastErrorCode := '';
+  FLastErrorMessage := '';
+  FFullname := '';
+  FEMail := '';
+  FLogMemo := nil;
+  FDebugMemo := nil;
   FScopes := TStringList.Create;
   FScopes.Delimiter := ' ';
   FScopes.QuoteChar := ' ';
@@ -148,6 +170,13 @@ destructor TGoogleOAuth2.Destroy;
 begin
   FScopes.Free;
   inherited Destroy;
+end;
+
+procedure TGoogleOAuth2.LogLine(Value: string);
+begin
+  if LogMemo <> nil then
+    LogMemo.Lines.Add(Value);
+  DebugLine(Value);
 end;
 
 procedure TGoogleOAuth2.DebugLine(Value: string);
@@ -204,7 +233,7 @@ procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = [];
 begin
   if Scopes = [] then
   begin
-    DebugLine('No scope specified in GetAccess');
+    LogLine('No scope specified in GetAccess');
   end;
 
   FScopes.Add('profile');
@@ -229,28 +258,28 @@ begin
     LoadAccessRefreshTokens
   else
   begin
-    // DebugLine('If you had an access_token please set it before calling GetAccess');
+    // LogLine('If you had an access_token please set it before calling GetAccess');
   end;
 
   Fullname := '';
   EMail := '';
   if access_token <> '' then
   begin
-    DebugLine('Getting account information');
+    LogLine('Getting account information');
     GetInformation;
   end;
   if (LastErrorCode <> '') or (access_token = '') then
   begin
     if access_token <> '' then
     begin
-      DebugLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
-      DebugLine(Format('Invalid access_token %s', [access_token]));
+      LogLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
+      LogLine(Format('Invalid access_token %s', [access_token]));
       Access_token := ''; // <- invalidate
     end;
     GetAccess_token;
     if access_token <> '' then
     begin
-      DebugLine('Getting account information');
+      LogLine('Getting account information');
       GetInformation;
       if (EMail <> '') then
       begin
@@ -258,19 +287,19 @@ begin
         if UseTokenFile then
           SaveAccessRefreshTokens
         else
-          DebugLine('Please save the access_token');
+          LogLine('Please save the access_token');
       end;
     end;
   end;
 
   if EMail <> '' then
-    DebugLine(Format('%s <%s>', [Fullname, EMail]));
+    LogLine(Format('%s <%s>', [Fullname, EMail]));
   if LastErrorCode <> '' then
-    DebugLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
+    LogLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
   if EMail <> '' then
-    DebugLine('We now have access')
+    LogLine('We now have access')
   else
-    DebugLine('We don''t have access');
+    LogLine('We don''t have access');
 
 end;
 
@@ -296,7 +325,7 @@ begin
       J := P.Parse;
       refresh_token := RetrieveJSONValue(J, 'refresh_token');
       access_token := RetrieveJSONValue(J, 'access_token');
-      DebugLine('Tokens restored from ' + token_filename);
+      LogLine('Tokens restored from ' + token_filename);
     finally
       if assigned(J) then
         J.Free;
@@ -317,7 +346,7 @@ begin
       try
         Add(J.AsJSON);
         SaveToFile(token_filename);
-        DebugLine('Tokens saved to ' + token_filename);
+        LogLine('Tokens saved to ' + token_filename);
       finally
         Free;
       end;
@@ -343,7 +372,7 @@ begin
     Scope := FScopes.DelimitedText;
     if Scope = '' then
     begin
-      DebugLine('No scope specified in GetAccess');
+      LogLine('No scope specified in GetAccess');
     end;
 
     URL := AuthorizationUrl;
@@ -353,7 +382,7 @@ begin
     Params := Params + '&redirect_uri=' + EncodeURLElement(RedirectUri);
     Params := Params + '&scope=' + EncodeURLElement(Scope);
 
-    DebugLine('Authorizing...');
+    LogLine('Authorizing...');
     GoUrl := Url + '?' + Params;
     Browser := CreateOleObject('InternetExplorer.Application');
     try
@@ -368,34 +397,73 @@ begin
       Browser.Height := 600;
       Browser.Navigate(GoUrl);
 
-      SearchFor := 'Success code=';
-      while (Pos(SearchFor, Browser.LocationName) <> 1) do
+      if ForceManualAuth then
       begin
+
+        Authorize_token := InputBox('Authentication code',
+          'Please enter the authorization code', '');
+
+        if Authorize_token <> '' then
+          DebugLine('Authorization: We used the manual input');
+
+      end
+      else
+      begin
+
         Sleep(500);
         Application.ProcessMessages;
-      end;
-
-      if (Pos(SearchFor, Browser.LocationName) = 1) then
-      begin
-        Document := Browser.Document;
-        Body := Document.Body;
-        Found := Body.InnerHtml;
-
-        // could have been done with RegExp
-        // but this is the only place we need it
-        SearchFor := 'readonly="readonly" value="';
-        if Pos(SearchFor, Found) > 0 then
+        SearchFor := 'Success code=';
+        while (Pos(SearchFor, Browser.LocationName) <> 1) do
         begin
-          System.Delete(Found, 1, Pos(SearchFor, Found) + Length(SearchFor) - 1);
-          if Pos('">', Found) > 0 then
-            Authorize_token := Copy(Found, 1, Pos('">', Found) - 1);
+          Sleep(500);
+          Application.ProcessMessages;
         end;
+        DebugLine('Browser.LocationName: ' + Browser.LocationName);
+
+        if UseBrowserTitle then
+        begin
+          // https://developers.google.com/youtube/2.0/developers_guide_protocol_oauth2#OAuth2_Installed_Applications_Flow
+          Found := Browser.LocationName;
+          Authorize_token := Copy(Found, Length(SearchFor) + 1);
+          DebugLine('Authorization: We used the browser-title');
+        end
+        else
+        begin
+          if (Pos(SearchFor, Browser.LocationName) = 1) then
+          begin
+            Document := Browser.Document;
+            Body := Document.Body;
+            Found := Body.InnerHtml;
+
+            DebugLine('Browser catched HTML:');
+            DebugLine('---------------------------------------');
+            DebugLine(Found);
+            DebugLine('---------------------------------------');
+
+            // the Success code in the Browsers-title is not always complete
+            // sometimes it is cut off.
+            // todo: check if this is still the case
+
+            // could have been done with RegExp
+            // but this is the only place we need it
+            SearchFor := 'readonly="readonly" value="';
+            if Pos(SearchFor, Found) > 0 then
+            begin
+              System.Delete(Found, 1, Pos(SearchFor, Found) + Length(SearchFor) - 1);
+              if Pos('">', Found) > 0 then
+                Authorize_token := Copy(Found, 1, Pos('">', Found) - 1);
+            end;
+            if Authorize_token <> '' then
+              DebugLine('Authorization: We used the browser-HTML text');
+          end;
+        end;
+
       end;
 
       if Authorize_token <> '' then
-        DebugLine('Autorization accepted')
+        LogLine('Authorization accepted')
       else
-        DebugLine('Autorization not accepted');
+        LogLine('Authorization not accepted');
 
       Browser.Quit;
 
@@ -405,7 +473,11 @@ begin
 
   except
     // on E: EOleSysError do ;
-    on E: Exception do ;
+    on E: Exception do
+    begin
+      DebugLine('Browser closed without confirmation.');
+      DebugLine('Exception: ' + E.Message);
+    end;
   end;
 
 end;
@@ -427,7 +499,7 @@ begin
   if Authorize_token = '' then
     exit;
 
-  DebugLine('Getting new Refresh_token');
+  LogLine('Getting new Refresh_token');
   URL := GetTokenUrl;
   Params := '';
   Params := Params + 'code=' + EncodeURLElement(authorize_token);
@@ -448,13 +520,13 @@ begin
         begin
           LastErrorCode := RetrieveJSONValue(D, 'code');
           LastErrorMessage := RetrieveJSONValue(D, 'message');
-          DebugLine(Format('Error in GetRefresh_token: %s - %s',
+          LogLine(Format('Error in GetRefresh_token: %s - %s',
             [LastErrorCode, LastErrorMessage]));
         end;
         refresh_token := RetrieveJSONValue(J, 'refresh_token');
         access_token := RetrieveJSONValue(J, 'access_token');
         if access_token <> '' then
-          DebugLine('New refresh- & access_token received');
+          LogLine('New refresh- & access_token received');
       finally
         if assigned(J) then
           J.Free;
@@ -486,7 +558,7 @@ begin
   if Access_token <> '' then
     exit; // we already received via getrefresh_token, so we can exit
 
-  DebugLine('Getting new Access_token');
+  LogLine('Getting new Access_token');
   URL := GetTokenUrl;
   Params := '';
   Params := Params + 'client_id=' + EncodeURLElement(FClient_id);
@@ -508,13 +580,13 @@ begin
           LastErrorMessage := RetrieveJSONValue(D, 'message');
           if LastErrorMessage = '' then
             LastErrorMessage := D.AsString;
-          DebugLine(Format('Error in GetAccess_token: %s - %s',
+          LogLine(Format('Error in GetAccess_token: %s - %s',
             [LastErrorCode, LastErrorMessage]));
           // haal nieuwe refresh_token
         end;
         access_token := RetrieveJSONValue(J, 'access_token');
         if access_token <> '' then
-          DebugLine('New access_token received');
+          LogLine('New access_token received');
       finally
         if assigned(J) then
           J.Free;

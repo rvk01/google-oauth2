@@ -46,6 +46,6 @@ Further Resources
 Todo
 ====
 
-* convert for delphi compatibility
-* maybe make token_filename changable
-* improve the documentation and comments
+* Improve the documentation and comments
+* Create a TDataset-like descendant for Calendar and EMail access
+
