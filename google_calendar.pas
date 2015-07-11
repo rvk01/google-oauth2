@@ -7,40 +7,25 @@ unit google_calendar;
 interface
 
 uses
-  Classes, SysUtils, DB, google_oauth2, fpjson, jsonparser;
+  Classes, SysUtils, DB, Forms, google_oauth2, fpjson, jsonparser, memds;
 
 type
-  TGoogleCalendar = class(TDataset)
+  TGoogleCalendar = class(TMemDataSet)
   private
     { private declarations }
-    FGoogleOAuth2: TGoogleOAuth2;
-    FRecCount: integer;
-    FRecSize: integer;
-    FCurrRecNo: integer;
-    FIsOpen: boolean;
-    JSONObject: TJSONParser;
-    CompleteJSON: TJSONData;
-    CurrentJSON: TJSONData;
+    FgOAuth2: TGoogleOAuth2;
     LastErrorCode: string;
     LastErrorMessage: string;
   protected
     { protected declarations }
-    function GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode;
-      DoCheck: boolean): TGetResult; override;
-    procedure InternalFirst; override;
-    procedure InternalClose; override;
-    procedure InternalHandleException; override;
-    procedure InternalInitFieldDefs; override;
-    procedure InternalOpen; override;
-    function IsCursorOpen: boolean; override;
   public
     { public declarations }
     constructor Create(AOwner: TComponent; client_id, client_secret: string); overload;
     destructor Destroy; override;
-    function GetFieldData(Field: TField; Buffer: Pointer): boolean; override;
-    procedure SetFieldData(Field: TField; Buffer: Pointer); override;
-    function GetRecordCount: integer; override;
-    property GoogleOAuth2: TGoogleOAuth2 read FGoogleOAuth2 write FGoogleOAuth2;
+    procedure Populate(aFilter: string = '');
+
+    property gOAuth2: TGoogleOAuth2 read FgOAuth2 write FgOAuth2;
+  published
   end;
 
 
@@ -51,101 +36,42 @@ uses httpsend;
 constructor TGoogleCalendar.Create(AOwner: TComponent; client_id, client_secret: string);
 begin
   inherited Create(AOwner);
-  FGoogleOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
-  JSONObject := nil;
-  CompleteJSON := nil;
-  CurrentJSON := nil;
-  FRecCount := 0;
-  FCurrRecNo := -1;
+  FieldDefs.Clear;
+  //FieldDefs.Add('Boolean', ftBoolean, 0, False);
+  //FieldDefs.Add('Integer', ftInteger, 0, False);
+  //FieldDefs.Add('SmallInt', ftSmallInt, 0, False);
+  //FieldDefs.Add('Float', ftFloat, 0, False);
+  //FieldDefs.Add('String', ftString, 30, False);
+  //FieldDefs.Add('Time', ftTime, 0, False);
+  //FieldDefs.Add('Date', ftDate, 0, False);
+  //FieldDefs.Add('DateTime', ftDateTime, 0, False);
+  FieldDefs.Add('start', ftString, 25, False);
+  FieldDefs.Add('end', ftString, 25, False);
+  FieldDefs.Add('summary', ftString, 255, False);
+  FieldDefs.Add('htmllink', ftString, 255, False);
+  CreateTable;
 
-  //FStream:=TMemoryStream.Create;
-  //FRecCount:=0;
-  //FRecSize:=0;
-  //FRecInfoOffset:=0;
-  //FCurrRecNo:=-1;
-  //BookmarkSize := sizeof(Longint);
+  gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
+
 end;
 
 destructor TGoogleCalendar.Destroy;
 begin
-  if assigned(CompleteJSON) then
-    CompleteJSON.Free;
-  if assigned(JSONObject) then
-    JSONObject.Free;
-  FGoogleOauth2.Free;
-  //FreeMem(FFieldOffsets);
-  //FreeMem(FFieldSizes);
+  gOAuth2.Free;
   inherited Destroy;
 end;
 
-
-
-function TGoogleCalendar.GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode;
-  DoCheck: boolean): TGetResult;
+procedure TGoogleCalendar.Populate(aFilter: string = '');
 var
-  Accepted: boolean;
-  J, D: TJSONData;
-begin
-  Result := grOk;
-  Accepted := False;
-  if (FRecCount < 1) then
-  begin
-    Result := grEOF;
-    exit;
-  end;
-  repeat
-    case GetMode of
-      gmCurrent:
-        if (FCurrRecNo >= FRecCount) or (FCurrRecNo < 0) then
-          Result := grError;
-      gmNext:
-        if (FCurrRecNo < FRecCount - 1) then
-          Inc(FCurrRecNo)
-        else
-          Result := grEOF;
-      gmPrior:
-        if (FCurrRecNo > 0) then
-          Dec(FCurrRecNo)
-        else
-          Result := grBOF;
-    end;
-    if Result = grOK then
-    begin
-
-      try
-        D := CompleteJSON.FindPath('items');
-        // for I := 0 to D.Count - 1 do ;
-        CurrentJSON := D.Items[FCurrRecNo];
-        Accepted := True;
-      finally
-      end;
-
-      if (GetMode = gmCurrent) and not Accepted then
-        Result := grError;
-
-    end;
-  until (Result <> grOK) or Accepted;
-
-end;
-
-procedure TGoogleCalendar.InternalFirst;
-begin
-  FCurrRecNo := -1;
-end;
-
-procedure TGoogleCalendar.InternalHandleException;
-begin
-  FCurrRecNo := FRecCount;
-end;
-
-procedure TGoogleCalendar.InternalInitFieldDefs;
-var
+  Response: TStringList;
+  URL: string;
+  Params: string;
+  P: TJSONParser;
   I: integer;
-  Fieldnm: ansistring;
-  iFldType: TFieldType;
-  iFldSize: integer;
+  J, D, E: TJSONData;
+  StartDt: string;
+  EndDt: string;
 begin
-  FieldDefs.Clear;
 
 (*
   {
@@ -167,132 +93,133 @@ begin
   },
 *)
 
-  for I := 0 to 4 do
-  begin
-    Fieldnm := 'field' + IntToStr(I);
-    iFldType := ftString;
-    iFldSize := 20;
-    TFieldDef.Create(FieldDefs, Fieldnm, iFldType, iFldSize, False, I + 1);
-  end;
-end;
-
-procedure TGoogleCalendar.InternalOpen;
-var
-  URL: string;
-  Params: string;
-  Response: TStringList;
-  D: TJSONData;
-begin
-  InternalInitFieldDefs;
-  // if DefaultFields then
-  CreateFields;
-  FCurrRecNo := -1;
-
   Response := TStringList.Create;
+  Self.DisableControls;
   try
 
+    if gOAuth2.EMail = '' then
+      exit;
+
+    gOAuth2.LogLine('Retrieving Calendar ' + gOAuth2.EMail);
     URL := 'https://www.googleapis.com/calendar/v3/calendars/' +
-      GoogleOauth2.EMail + '/events';
-    Params := 'access_token=' + GoogleOauth2.Access_token;
+      gOAuth2.EMail + '/events';
+    Params := 'access_token=' + gOAuth2.Access_token;
     Params := Params + '&maxResults=2500';
     if HttpGetText(URL + '?' + Params, Response) then
     begin
-
-      JSONObject := TJSONParser.Create(Response.Text);
+      P := TJSONParser.Create(Response.Text);
       try
-        // Response.SavetoFile('c:\temp\test.json');
-        CompleteJSON := JSONObject.Parse;
-        if Assigned(CompleteJSON) then
+        J := P.Parse;
+        if Assigned(J) then
         begin
-          D := CompleteJSON.FindPath('error');
+
+          D := J.FindPath('error');
           if assigned(D) then
           begin
-            LastErrorCode := GoogleOauth2.RetrieveJSONValue(D, 'code');
-            LastErrorMessage := GoogleOauth2.RetrieveJSONValue(D, 'message');
+            LastErrorCode := gOAuth2.RetrieveJSONValue(D, 'code');
+            LastErrorMessage := gOAuth2.RetrieveJSONValue(D, 'message');
+            gOAuth2.LogLine(format('Error %s: %s',
+              [LastErrorCode, LastErrorMessage]));
             exit;
           end;
-          D := CompleteJSON.FindPath('items');
-          // for I := 0 to D.Count - 1 do ;
-          FRecCount := D.Count;
-          FIsOpen := True;
-        end;
 
+          gOAuth2.DebugLine('Name: ' + gOAuth2.RetrieveJSONValue(J, 'summary'));
+          gOAuth2.DebugLine('Updated: ' + gOAuth2.RetrieveJSONValue(J, 'updated'));
+          gOAuth2.DebugLine('Timezone: ' + gOAuth2.RetrieveJSONValue(J, 'timeZone'));
+          gOAuth2.DebugLine('Next page: ' + gOAuth2.RetrieveJSONValue(J,
+            'nextPageToken'));
+          gOAuth2.DebugLine('Next sync: ' + gOAuth2.RetrieveJSONValue(J,
+            'nextSyncToken'));
+
+          gOAuth2.LogLine('Busy filling dataset');
+
+          D := J.FindPath('items');
+          gOAuth2.DebugLine(format('%d items received', [D.Count]));
+          for I := 0 to D.Count - 1 do
+          begin
+            E := D.Items[I].FindPath('start');
+            StartDt := gOAuth2.RetrieveJSONValue(E, 'dateTime');
+            if StartDt = '' then
+              StartDt := gOAuth2.RetrieveJSONValue(E, 'date');
+
+            E := D.Items[I].FindPath('end');
+            EndDt := gOAuth2.RetrieveJSONValue(E, 'dateTime');
+            if EndDt = '' then
+              EndDt := gOAuth2.RetrieveJSONValue(E, 'date');
+
+            Append;
+            // 2015-02-10T10:42:49.297Z
+            // 2012-05-18T15:45:00+02:00
+            FieldByName('start').AsString := StartDt;
+            FieldByName('end').AsString := EndDt;
+            FieldByName('summary').AsString :=
+              gOAuth2.RetrieveJSONValue(D.Items[I], 'summary');
+            FieldByName('htmllink').AsString :=
+              gOAuth2.RetrieveJSONValue(D.Items[I], 'htmlLink');
+            Self.Post;
+            Application.ProcessMessages;
+
+          end;
+
+          gOAuth2.LogLine(format('%d items stored', [Self.RecordCount]));
+
+          gOAuth2.LogLine('Done filling dataset');
+
+        end;
       finally
+        if assigned(J) then
+          J.Free;
+        P.Free;
       end;
 
     end;
 
+
   finally
+    Response.Free;
+    Self.EnableControls;
   end;
 
 end;
 
-procedure TGoogleCalendar.InternalClose;
-begin
-  FIsOpen := False;
-  if DefaultFields then
-    DestroyFields;
-end;
 
-function TGoogleCalendar.IsCursorOpen: boolean;
-begin
-  Result := FIsOpen;
-end;
 
-function TGoogleCalendar.GetFieldData(Field: TField; Buffer: Pointer): boolean;
-var
-  SrcBuffer: TRecordBuffer;
-  I: integer;
-  aStr: string;
-begin
+(*
 
-  (*
-  I := Field.FieldNo - 1;
-  case Field.DataType of
-    //ftBoolean: wordbool(Buffer^) := StrToBool(FStrings.Values[Field.FieldName]);
-    ftinteger: longint(Buffer^) := 25; // Todo:
-    ftFloat: double(Buffer^) := pi;  // Todo:
-    ftString:
-    begin
-      //aStr := FStrings.Values[Field.FieldName];
-      move(aStr[1], Buffer^, length(aStr) + 1);
-    end;
-  end;
-  *)
+      Open;
+      D:=now;
+      ACount:=1000;
+      for I:=1 to ACount do
+        begin
+        Append;
+        FieldByName('Boolean').AsBoolean:=False;
+        FieldByName('Integer').AsInteger:=I;
+        FieldByName('SmallInt').AsInteger:=I;
+        FieldByName('Float').AsFloat:=I/10;
+        FieldByName('String').AsString:='Test-Data '+IntToStr(I);
+        FieldByName('Time').AsDateTime:=D;
+        FieldByName('Date').AsDateTime:=D;
+        Post;
+        end;
+      First;
+      ACount:=0;
+      While Not EOF do
+        begin
+        Inc(ACount);
+        Writeln('Record ',ACount,' : ');
+        Writeln('------------------------');
+        For I:=0 to Fields.Count-1 do
+          Writeln(Fields[I].FieldName,' : ',Fields[I].AsString);
+        Writeln;
+        Next;
+        end;
+      Writeln('Total data size : ',DataSize);
+      If (ParamCount>0) then
+        FileName:=ParamStr(1);
+      Close;
 
-  //  aStr := CurrentJSON;
-  aStr := GoogleOauth2.RetrieveJSONValue(CurrentJSON, 'summary');
-  move(aStr[1], Buffer^, length(aStr) + 1);
-  Result := True; // <-------
+*)
 
-  //MessageBox(CurrentJSON);
-  //if I >= 0 then
-  //begin
-  //  Result := not getfieldisnull(pointer(srcbuffer), I);
-  //  if Result and assigned(Buffer) then
-  //    Move(GetRecordBufferPointer(SrcBuffer, GetIntegerPointer(ffieldoffsets, I)^)^,
-  //      Buffer^, GetIntegerPointer(FFieldSizes, I)^);
-  //end
-  //else // Calculated, Lookup
-  //begin
-  //  Inc(SrcBuffer, RecordSize + Field.Offset);
-  //  Result := boolean(SrcBuffer[0]);
-  //  if Result and assigned(Buffer) then
-  //    Move(SrcBuffer[1], Buffer^, Field.DataSize);
-  //end;
-
-end;
-
-procedure TGoogleCalendar.SetFieldData(Field: TField; Buffer: Pointer);
-begin
-
-end;
-
-function TGoogleCalendar.GetRecordCount: integer;
-begin
-  CheckActive;
-  Result := FRecCount;
-end;
 
 
 end.

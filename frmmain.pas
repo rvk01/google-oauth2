@@ -5,8 +5,8 @@ unit frmMain;
 interface
 
 uses
-  Classes, SysUtils, DB, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, Grids, DBGrids;
+  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
+  ComCtrls, ExtCtrls, Grids;
 
 type
 
@@ -14,7 +14,6 @@ type
 
   TMainform = class(TForm)
     btGetAccess: TButton;
-    btGetCalendar: TButton;
     btSendMail: TButton;
     btRemoveTokens: TButton;
     btClearLog: TButton;
@@ -27,17 +26,17 @@ type
 
     ckForceManualAuth: TCheckBox;
     ckUseBrowserTitle: TCheckBox;
-    DataSource1: TDataSource;
-    DBGrid1: TDBGrid;
 
 
     edBody: TMemo;
+    Edit1: TEdit;
     edRecipient: TEdit;
     edSender: TEdit;
     edSubject: TEdit;
     Label1: TLabel;
     Label2: TLabel;
     Label3: TLabel;
+    Label4: TLabel;
     Memo1: TMemo;
     Memo2: TMemo;
     PageControl1: TPageControl;
@@ -50,7 +49,6 @@ type
     TabSheet1: TTabSheet;
     TabSheet10: TTabSheet;
     TabSheet11: TTabSheet;
-    TabSheet12: TTabSheet;
     TabSheet2: TTabSheet;
     TabSheet3: TTabSheet;
     TabSheet4: TTabSheet;
@@ -59,7 +57,6 @@ type
     TabSheet7: TTabSheet;
     TabSheet8: TTabSheet;
     TabSheet9: TTabSheet;
-    procedure btGetCalendarClick(Sender: TObject);
     procedure btGetAccessClick(Sender: TObject);
     procedure btSendMailClick(Sender: TObject);
     procedure btRemoveTokensClick(Sender: TObject);
@@ -67,6 +64,7 @@ type
     procedure btGetAppointmentsClick(Sender: TObject);
     procedure btClearDebugClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure StringGrid1DblClick(Sender: TObject);
   private
     { private declarations }
   public
@@ -84,9 +82,8 @@ uses
   google_oauth2,
   google_calendar,
   blcksock, smtpsend,
-  httpsend,
   Windows,
-  fpjson, jsonparser;
+  comobj;
 
 {$R *.lfm}
 
@@ -107,7 +104,8 @@ begin
   if FileExists('tokens.dat') then // already tokens
   begin
     CheckGroup1.Enabled := False;
-    CheckGroup1.Caption := 'Access (scope)             remove tokens.dat first to get new access';
+    CheckGroup1.Caption :=
+      'Access (scope)             remove tokens.dat first to get new access';
     btGetAccess.Caption := 'Check access';
     ckForceManualAuth.Enabled := False;
     ckUseBrowserTitle.Enabled := False;
@@ -128,6 +126,12 @@ begin
   Memo1.Clear;
   Memo2.Clear;
 
+  //Left := (Screen.Width - round(Screen.Width * 0.8)) div 2;
+  //Top := (Screen.Height - round(Screen.Height * 0.8)) div 2;
+  Width := round(Screen.Width * 0.6);
+  Height := round(Screen.Height * 0.9) - 100;
+  Top := 100;
+
   ckForceManualAuth.Checked := False;
   ckUseBrowserTitle.Checked := True;
 
@@ -146,14 +150,39 @@ begin
 
 end;
 
+procedure TMainform.StringGrid1DblClick(Sender: TObject);
+var
+  Browser: olevariant;
+  GoUrl: variant;
+begin
+
+  GoUrl := '';
+  with TStringGrid(Sender) do
+    GoUrl := Cells[4, Row];
+  if Pos('https://', GoUrl) = 0 then exit;
+
+  Browser := CreateOleObject('InternetExplorer.Application');
+  Browser.Visible := True;
+  Browser.AddressBar := False;
+  Browser.Menubar := False;
+  Browser.ToolBar := False;
+  Browser.StatusBar := False;
+  Browser.Left := (Screen.Width - round(Screen.Width * 0.8)) div 2;
+  Browser.Top := (Screen.Height - round(Screen.Height * 0.8)) div 2;
+  Browser.Width := round(Screen.Width * 0.8);
+  Browser.Height := round(Screen.Height * 0.8);
+  Browser.Navigate(GoUrl);
+
+end;
+
 procedure TMainform.btGetAccessClick(Sender: TObject);
 var
-  gApi: TGoogleOAuth2;
+  gOAuth2: TGoogleOAuth2;
   Scopes: GoogleScopeSet;
 begin
   // Onetime authentication
   // Save tokens to token.dat
-  gApi := TGoogleOAuth2.Create(client_id, client_secret);
+  gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
   try
 
     Scopes := [];
@@ -166,36 +195,20 @@ begin
     if CheckGroup1.Checked[5] then
       Include(Scopes, goDrive);
 
-    gApi.LogMemo := Memo1;
-    gApi.DebugMemo := Memo2;
-    gApi.ForceManualAuth := ckForceManualAuth.Checked;
-    gApi.UseBrowserTitle := ckUseBrowserTitle.Checked;
-    gApi.GetAccess(Scopes, True); // <- get from file
+    gOAuth2.LogMemo := Memo1;
+    gOAuth2.DebugMemo := Memo2;
+    gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
+    gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
+    gOAuth2.GetAccess(Scopes, True); // <- get from file
 
-    if gApi.EMail <> '' then
-      edSender.Text := format('%s <%s>', [gApi.FullName, gApi.EMail]);
+    if gOAuth2.EMail <> '' then
+      edSender.Text := format('%s <%s>', [gOAuth2.FullName, gOAuth2.EMail]);
 
     CheckTokenFile;
 
   finally
-    gApi.Free;
+    gOAuth2.Free;
   end;
-
-end;
-
-procedure TMainform.btGetCalendarClick(Sender: TObject);
-var
-  ds: TGoogleCalendar;
-begin
-
-  ds := TGoogleCalendar.Create(Self, client_id, client_secret);
-  DataSource1.DataSet := ds;
-  ds.GoogleOAuth2.LogMemo := Memo1;
-  ds.GoogleOAuth2.GetAccess([goCalendar], True);
-  ds.Open;
-  ds.First;
-  ds.Last;
-  ds.First;
 
 end;
 
@@ -266,7 +279,7 @@ end;
 
 procedure TMainform.btSendMailClick(Sender: TObject);
 var
-  gApi: TGoogleOAuth2;
+  gOAuth2: TGoogleOAuth2;
   smtp: TSMTPSend;
   msg_lines: TStringList;
 begin
@@ -282,26 +295,26 @@ begin
     btGetAccess.Click;
   end;
 
-  gApi := TGoogleOAuth2.Create(client_id, client_secret);
+  gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
   smtp := TSMTPSend.Create;
   msg_lines := TStringList.Create;
   try
     btSendMail.Enabled := False;
 
     // first get oauthToken
-    gApi.LogMemo := Memo1;
-    gApi.DebugMemo := Memo2;
-    gApi.ForceManualAuth := ckForceManualAuth.Checked;
-    gApi.UseBrowserTitle := ckUseBrowserTitle.Checked;
-    gApi.GetAccess([], True); // <- get from file
+    gOAuth2.LogMemo := Memo1;
+    gOAuth2.DebugMemo := Memo2;
+    gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
+    gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
+    gOAuth2.GetAccess([], True); // <- get from file
     // no need for scope because we should already have access
     // via the btGetAccess for all the scopes in Groupbox
-    if gApi.EMail = '' then
+    if gOAuth2.EMail = '' then
       exit;
 
     CheckTokenFile;
 
-    edSender.Text := format('%s <%s>', [gApi.FullName, gApi.EMail]);
+    edSender.Text := format('%s <%s>', [gOAuth2.FullName, gOAuth2.EMail]);
 
     msg_lines.Add('From: ' + edSender.Text);
     msg_lines.Add('To: ' + edRecipient.Text);
@@ -325,14 +338,14 @@ begin
     end;
 
     AddToLog('XOAUTH2');
-    if not smtp.DoXOAuth2(gApi.GetXOAuth2Base64) then
+    if not smtp.DoXOAuth2(gOAuth2.GetXOAuth2Base64) then
     begin
       AddToLog('XOAUTH2 ERROR: ' + CRLF + smtp.ChallengeError());
       exit;
     end;
 
     AddToLog('SMTP Mail');
-    if not smtp.MailFrom(gApi.EMail, Length(gApi.EMail)) then
+    if not smtp.MailFrom(gOAuth2.EMail, Length(gOAuth2.EMail)) then
     begin
       AddToLog('SMTP ERROR: MailFrom:' + smtp.EnhCodeString);
       exit;
@@ -358,7 +371,7 @@ begin
     AddToLog('OK !');
 
   finally
-    gApi.Free;
+    gOAuth2.Free;
     smtp.Free;
     msg_lines.Free;
     btSendMail.Enabled := True;
@@ -451,136 +464,91 @@ end;
 
 procedure TMainform.btGetAppointmentsClick(Sender: TObject);
 var
-  gApi: TGoogleOAuth2;
   Response: TStringList;
-  URL: string;
-  Params: string;
-  P: TJSONParser;
-  I, Q: integer;
-  J, D, E: TJSONData;
+  Q: integer;
   StartDt: string;
   EndDt: string;
   nwWidth: integer;
-  LastErrorCode, LastErrorMessage: string;
+
+var
+  ds: TGoogleCalendar;
+
 begin
-  gApi := TGoogleOAuth2.Create(client_id, client_secret);
   Response := TStringList.Create;
+  ds := TGoogleCalendar.Create(Self, client_id, client_secret);
   try
     btGetAppointments.Enabled := False;
 
-    // first get oauthToken
-    gApi.LogMemo := Memo1;
-    gApi.DebugMemo := Memo2;
-    gApi.ForceManualAuth := ckForceManualAuth.Checked;
-    gApi.UseBrowserTitle := ckUseBrowserTitle.Checked;
-    gApi.GetAccess([goMail], True); // <- get from file
-    if gApi.EMail = '' then
-      exit;
+    ds.gOAuth2.LogMemo := Memo1;
+    ds.gOAuth2.DebugMemo := Memo2;
+    ds.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
+    ds.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
+    ds.gOAuth2.GetAccess([goCalendar], True);
 
     CheckTokenFile;
 
-    AddToLog('Retrieving Calendar ' + gApi.EMail);
-    URL := 'https://www.googleapis.com/calendar/v3/calendars/' + gApi.EMail + '/events';
-    Params := 'access_token=' + gApi.Access_token;
-    Params := Params + '&maxResults=2500';
-    if HttpGetText(URL + '?' + Params, Response) then
-    begin
-      P := TJSONParser.Create(Response.Text);
-      try
-        J := P.Parse;
-        if Assigned(J) then
+    if ds.gOAuth2.EMail = '' then
+      exit;
+
+    ds.Open;
+    ds.Populate();
+
+    StringGrid1.Options := StringGrid1.Options + [goRowSelect];
+    StringGrid1.ColCount := 5;
+    StringGrid1.RowCount := 2;
+    StringGrid1.Cells[1, 0] := 'Start';
+    StringGrid1.Cells[2, 0] := 'Eind';
+    StringGrid1.Cells[3, 0] := 'Afspraak';
+    StringGrid1.Cells[4, 0] := 'Link';
+
+    AddToLog('Busy filling grid');
+    SendMessage(StringGrid1.Handle, WM_SETREDRAW, 0, 0);
+    try
+      ds.First;
+      while not ds.EOF do
+      begin
+
+        with StringGrid1 do
         begin
-
-          D := J.FindPath('error');
-          if assigned(D) then
-          begin
-            LastErrorCode := gApi.RetrieveJSONValue(D, 'code');
-            LastErrorMessage := gApi.RetrieveJSONValue(D, 'message');
-            AddToLog(format('Error %s: %s', [LastErrorCode, LastErrorMessage]));
-            exit;
-          end;
-
-          AddToLog('Name: ' + gApi.RetrieveJSONValue(J, 'summary'));
-          AddToLog('Updated: ' + gApi.RetrieveJSONValue(J, 'updated'));
-          AddToLog('Timezone: ' + gApi.RetrieveJSONValue(J, 'timeZone'));
-          AddToLog('Next page: ' + gApi.RetrieveJSONValue(J, 'nextPageToken'));
-          AddToLog('Next sync: ' + gApi.RetrieveJSONValue(J, 'nextSyncToken'));
-
-          AddToLog('Busy filling grid');
-
-          StringGrid1.Options := StringGrid1.Options + [goRowSelect];
-          StringGrid1.ColCount := 5;
-          StringGrid1.RowCount := 2;
-          StringGrid1.Cells[1, 0] := 'Start';
-          StringGrid1.Cells[2, 0] := 'Eind';
-          StringGrid1.Cells[3, 0] := 'Afspraak';
-          StringGrid1.Cells[4, 0] := 'Link';
-
-          SendMessage(StringGrid1.Handle, WM_SETREDRAW, 0, 0);
-          try
-            D := J.FindPath('items');
-            for I := 0 to D.Count - 1 do
-            begin
-              E := D.Items[I].FindPath('start');
-              StartDt := gApi.RetrieveJSONValue(E, 'dateTime');
-              if StartDt = '' then
-                StartDt := gApi.RetrieveJSONValue(E, 'date');
-              StringGrid1.Cells[0, StringGrid1.RowCount - 1];
-
-              E := D.Items[I].FindPath('end');
-              EndDt := gApi.RetrieveJSONValue(E, 'dateTime');
-              if EndDt = '' then
-                EndDt := gApi.RetrieveJSONValue(E, 'date');
-
-              StringGrid1.Cells[1, StringGrid1.RowCount - 1] := StartDt;
-              StringGrid1.Cells[2, StringGrid1.RowCount - 1] := EndDt;
-              StringGrid1.Cells[3, StringGrid1.RowCount - 1] :=
-                gApi.RetrieveJSONValue(D.Items[I], 'summary');
-              StringGrid1.Cells[4, StringGrid1.RowCount - 1] :=
-                gApi.RetrieveJSONValue(D.Items[I], 'htmlLink');
-              for Q := 1 to 4 do
-              begin
-                nwWidth := StringGrid1.Canvas.TextWidth(
-                  StringGrid1.Cells[Q, StringGrid1.RowCount - 1]);
-                if nwWidth > StringGrid1.ColWidths[Q] then
-                  StringGrid1.ColWidths[Q] := nwWidth + 2;
-              end;
-
-              Application.ProcessMessages;
-              StringGrid1.RowCount := StringGrid1.RowCount + 1;
-
-            end;
-
-            AddToLog('Sorting');
-            SortStringGrid(StringGrid1, 1);
-
-            StringGrid1.ColWidths[0] := 10;
-            StringGrid1.ColWidths[4] := 0; // <- also not -1
-            // StringGrid1.Columns[4].Visible := false; // <- why does this give an error ?
-            while (StringGrid1.RowCount > 2) and (StringGrid1.Cells[1, 1] = '') do
-              StringGrid1.DeleteRow(1);
-
-            AddToLog('Done filling grid');
-
-          finally
-            SendMessage(StringGrid1.Handle, WM_SETREDRAW, 1, 0);
-            StringGrid1.Repaint;
-            StringGrid1.SetFocus;
-          end;
-
+          Cells[1, StringGrid1.RowCount - 1] := ds.FieldByName('start').AsString;
+          Cells[2, StringGrid1.RowCount - 1] := ds.FieldByName('end').AsString;
+          Cells[3, StringGrid1.RowCount - 1] := ds.FieldByName('summary').AsString;
+          Cells[4, StringGrid1.RowCount - 1] := ds.FieldByName('htmllink').AsString;
         end;
-      finally
-        if assigned(J) then
-          J.Free;
-        P.Free;
+
+        for Q := 1 to 4 do
+        begin
+          nwWidth := StringGrid1.Canvas.TextWidth(
+            StringGrid1.Cells[Q, StringGrid1.RowCount - 1]);
+          if nwWidth > StringGrid1.ColWidths[Q] then
+            StringGrid1.ColWidths[Q] := nwWidth + 20;
+        end;
+        Application.ProcessMessages;
+        StringGrid1.RowCount := StringGrid1.RowCount + 1;
+
+        ds.Next;
       end;
 
-    end;
+      AddToLog('Sorting');
+      SortStringGrid(StringGrid1, 1);
 
+      StringGrid1.ColWidths[0] := 10;
+      StringGrid1.ColWidths[4] := 0; // <- also not -1
+      // StringGrid1.Columns[4].Visible := false; // <- why does this give an error ?
+      while (StringGrid1.RowCount > 2) and (StringGrid1.Cells[3, 1] = '') do
+        StringGrid1.DeleteRow(1);
+
+      AddToLog('Done filling grid');
+
+    finally
+      SendMessage(StringGrid1.Handle, WM_SETREDRAW, 1, 0);
+      StringGrid1.Repaint;
+      StringGrid1.SetFocus;
+    end;
 
   finally
     Response.Free;
-    gApi.Free;
+    ds.Free;
     btGetAppointments.Enabled := True;
   end;
 

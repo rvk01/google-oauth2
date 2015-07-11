@@ -112,6 +112,7 @@ type
     property EMail: string read FEMail write FEMail;
     property LogMemo: TMemo read FLogMemo write FLogMemo;
     property DebugMemo: TMemo read FDebugMemo write FDebugMemo;
+  published
 
   end;
 
@@ -424,7 +425,7 @@ begin
         begin
           // https://developers.google.com/youtube/2.0/developers_guide_protocol_oauth2#OAuth2_Installed_Applications_Flow
           Found := Browser.LocationName;
-          Authorize_token := Copy(Found, Length(SearchFor) + 1);
+          Authorize_token := Copy(Found, Length(SearchFor) + 1, 1000);
           DebugLine('Authorization: We used the browser-title');
         end
         else

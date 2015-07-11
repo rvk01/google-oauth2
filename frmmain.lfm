@@ -1,22 +1,23 @@
 object Mainform: TMainform
-  Left = 378
-  Height = 752
-  Top = 187
-  Width = 782
+  Left = 332
+  Height = 556
+  Top = 55
+  Width = 793
   Caption = 'Google OAuth 2.0 testapp'
-  ClientHeight = 752
-  ClientWidth = 782
+  ClientHeight = 556
+  ClientWidth = 793
   OnCreate = FormCreate
-  LCLVersion = '1.5'
+  Position = poScreenCenter
+  LCLVersion = '1.4.0.4'
   object PageControl1: TPageControl
     Left = 10
-    Height = 440
+    Height = 244
     Top = 302
-    Width = 762
-    ActivePage = TabSheet12
+    Width = 773
+    ActivePage = TabSheet2
     Align = alClient
     BorderSpacing.Around = 10
-    TabIndex = 5
+    TabIndex = 2
     TabOrder = 0
     object TabSheet1: TTabSheet
       Caption = 'GMail'
@@ -186,13 +187,13 @@ object Mainform: TMainform
     end
     object TabSheet2: TTabSheet
       Caption = 'Calendar'
-      ClientHeight = 412
-      ClientWidth = 754
+      ClientHeight = 216
+      ClientWidth = 765
       object PageControl3: TPageControl
         Left = 10
-        Height = 392
+        Height = 196
         Top = 10
-        Width = 734
+        Width = 745
         ActivePage = TabSheet7
         Align = alClient
         BorderSpacing.Around = 10
@@ -213,8 +214,8 @@ object Mainform: TMainform
         end
         object TabSheet7: TTabSheet
           Caption = 'Calendar'
-          ClientHeight = 364
-          ClientWidth = 726
+          ClientHeight = 168
+          ClientWidth = 737
           object btGetAppointments: TButton
             Left = 8
             Height = 25
@@ -226,13 +227,33 @@ object Mainform: TMainform
           end
           object StringGrid1: TStringGrid
             Left = 10
-            Height = 306
+            Height = 110
             Top = 48
-            Width = 706
+            Width = 717
             Align = alBottom
             Anchors = [akTop, akLeft, akRight, akBottom]
             BorderSpacing.Around = 10
             TabOrder = 1
+            OnDblClick = StringGrid1DblClick
+          end
+          object Edit1: TEdit
+            Left = 299
+            Height = 23
+            Top = 8
+            Width = 428
+            Anchors = [akTop, akRight]
+            Enabled = False
+            TabOrder = 2
+            Text = 'Edit1'
+          end
+          object Label4: TLabel
+            Left = 267
+            Height = 15
+            Top = 12
+            Width = 26
+            Anchors = [akTop, akRight]
+            Caption = 'Filter'
+            ParentColor = False
           end
         end
       end
@@ -269,41 +290,16 @@ object Mainform: TMainform
         TabOrder = 1
       end
     end
-    object TabSheet12: TTabSheet
-      Caption = 'Only for testing TCalendarDataset'
-      ClientHeight = 412
-      ClientWidth = 754
-      Enabled = False
-      object btGetCalendar: TButton
-        Left = 24
-        Height = 25
-        Top = 8
-        Width = 75
-        Caption = 'btGetCalendar'
-        OnClick = btGetCalendarClick
-        TabOrder = 0
-      end
-      object DBGrid1: TDBGrid
-        Left = 24
-        Height = 344
-        Top = 56
-        Width = 712
-        Color = clWindow
-        Columns = <>
-        DataSource = DataSource1
-        TabOrder = 1
-      end
-    end
   end
   object Panel1: TPanel
     Left = 10
     Height = 282
     Top = 10
-    Width = 762
+    Width = 773
     Align = alTop
     BorderSpacing.Around = 10
     ClientHeight = 282
-    ClientWidth = 762
+    ClientWidth = 773
     TabOrder = 1
     object btGetAccess: TButton
       Left = 136
@@ -318,7 +314,7 @@ object Mainform: TMainform
       Left = 11
       Height = 103
       Top = 168
-      Width = 740
+      Width = 751
       Align = alBottom
       BorderSpacing.Around = 10
       ScrollBars = ssAutoVertical
@@ -346,7 +342,7 @@ object Mainform: TMainform
       Left = 24
       Height = 96
       Top = 48
-      Width = 718
+      Width = 729
       Anchors = [akTop, akLeft, akRight]
       AutoFill = True
       Caption = 'Access (scope)'
@@ -359,7 +355,7 @@ object Mainform: TMainform
       ChildSizing.Layout = cclTopToBottomThenLeftToRight
       ChildSizing.ControlsPerLine = 2
       ClientHeight = 76
-      ClientWidth = 714
+      ClientWidth = 725
       ColumnLayout = clVerticalThenHorizontal
       Columns = 3
       Items.Strings = (
@@ -376,7 +372,7 @@ object Mainform: TMainform
       }
     end
     object ckForceManualAuth: TCheckBox
-      Left = 481
+      Left = 492
       Height = 19
       Top = 8
       Width = 261
@@ -385,7 +381,7 @@ object Mainform: TMainform
       TabOrder = 5
     end
     object ckUseBrowserTitle: TCheckBox
-      Left = 481
+      Left = 492
       Height = 19
       Top = 30
       Width = 238
@@ -393,9 +389,5 @@ object Mainform: TMainform
       Caption = 'Use browser-title for authentication-code'
       TabOrder = 6
     end
-  end
-  object DataSource1: TDataSource
-    left = 152
-    top = 336
   end
 end

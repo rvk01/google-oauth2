@@ -65,6 +65,7 @@
       <Unit4>
         <Filename Value="google_calendar.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="google_calendar"/>
       </Unit4>
     </Units>
   </ProjectOptions>
