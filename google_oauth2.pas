@@ -429,7 +429,7 @@ begin
         Found := Browser.LocationName;
         Authorize_token := Copy(Found, Length(SearchFor) + 1, 1000);
         DebugLine('Authorization: We have an Authorize_token from the browser-title');
-        Authorize_token := 'abd';
+        // Authorize_token := 'abd'; got testing the _html
 
         // always do the html stuff.
         if (Pos(SearchFor, Browser.LocationName) = 1) then // 'Success code='
