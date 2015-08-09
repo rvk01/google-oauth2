@@ -429,7 +429,8 @@ begin
         Found := Browser.LocationName;
         Authorize_token := Copy(Found, Length(SearchFor) + 1, 1000);
         DebugLine('Authorization: We have an Authorize_token from the browser-title');
-        // Authorize_token := 'abd'; got testing the _html
+        DebugLine('Authorization: ' + Authorize_token);
+        // Authorize_token := 'abc'; // for testing the _html
 
         // always do the html stuff.
         if (Pos(SearchFor, Browser.LocationName) = 1) then // 'Success code='
@@ -449,15 +450,22 @@ begin
 
           // could have been done with RegExp
           // but this is the only place we need it
-          SearchFor := 'readonly="readonly" value="';
+          SearchFor := 'value=';
           if Pos(SearchFor, Found) > 0 then
           begin
             System.Delete(Found, 1, Pos(SearchFor, Found) + Length(SearchFor) - 1);
-            if Pos('">', Found) > 0 then
-              Authorize_token_html := Copy(Found, 1, Pos('">', Found) - 1);
+            if Pos('>', Found) > 0 then
+            begin
+              Authorize_token_html := Copy(Found, 1, Pos('>', Found) - 1);
+              Authorize_token_html := StringReplace(Authorize_token_html, '"', '', [rfReplaceAll]);
+              Authorize_token_html := StringReplace(Authorize_token_html, #39, '', [rfReplaceAll]);
+            end;
           end;
           if Authorize_token_html <> '' then
+          begin
             DebugLine('Authorization: We have the browser-HTML text');
+            DebugLine('Authorization: ' + Authorize_token_html);
+          end;
         end;
 
         if (Authorize_token = '') and (Authorize_token_html <> '') then
