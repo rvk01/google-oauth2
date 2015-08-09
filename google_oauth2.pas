@@ -71,6 +71,7 @@ type
     FClient_id: string;
     FClient_secret: string;
     FAuthorize_token: string;
+    FAuthorize_token_html: string;
     FRefresh_token: string;
     FAccess_token: string;
     FTokens_refreshed: boolean;
@@ -102,6 +103,8 @@ type
 
     property Tokens_refreshed: boolean read FTokens_refreshed write FTokens_refreshed;
     property Authorize_token: string read FAuthorize_token write FAuthorize_token;
+    property Authorize_token_html: string read FAuthorize_token_html
+      write FAuthorize_token_html;
     property Refresh_token: string read FRefresh_token write FRefresh_token;
     property Access_token: string read FAccess_token write FAccess_token;
     property ForceManualAuth: boolean read FForceManualAuth write FForceManualAuth;
@@ -151,6 +154,7 @@ begin
   FClient_id := client_id;
   FClient_secret := client_secret;
   FAuthorize_token := '';
+  FAuthorize_token_html := '';
   FRefresh_token := '';
   FAccess_token := '';
   FTokens_refreshed := False;
@@ -405,7 +409,7 @@ begin
           'Please enter the authorization code', '');
 
         if Authorize_token <> '' then
-          DebugLine('Authorization: We used the manual input');
+          DebugLine('Authorization: We have a manual Authorize_token');
 
       end
       else
@@ -421,50 +425,48 @@ begin
         end;
         DebugLine('Browser.LocationName: ' + Browser.LocationName);
 
-        if UseBrowserTitle then
+        // https://developers.google.com/youtube/2.0/developers_guide_protocol_oauth2#OAuth2_Installed_Applications_Flow
+        Found := Browser.LocationName;
+        Authorize_token := Copy(Found, Length(SearchFor) + 1, 1000);
+        DebugLine('Authorization: We have an Authorize_token from the browser-title');
+        Authorize_token := 'abd';
+
+        // always do the html stuff.
+        if (Pos(SearchFor, Browser.LocationName) = 1) then // 'Success code='
         begin
-          // https://developers.google.com/youtube/2.0/developers_guide_protocol_oauth2#OAuth2_Installed_Applications_Flow
-          Found := Browser.LocationName;
-          Authorize_token := Copy(Found, Length(SearchFor) + 1, 1000);
-          DebugLine('Authorization: We used the browser-title');
-        end
-        else
-        begin
-          if (Pos(SearchFor, Browser.LocationName) = 1) then
+          Document := Browser.Document;
+          Body := Document.Body;
+          Found := Body.InnerHtml;
+
+          DebugLine('Browser catched HTML:');
+          DebugLine('---------------------------------------');
+          DebugLine(Found);
+          DebugLine('---------------------------------------');
+
+          // the Success code in the Browsers-title is not always complete
+          // sometimes it is cut off.
+          // todo: check if this is still the case
+
+          // could have been done with RegExp
+          // but this is the only place we need it
+          SearchFor := 'readonly="readonly" value="';
+          if Pos(SearchFor, Found) > 0 then
           begin
-            Document := Browser.Document;
-            Body := Document.Body;
-            Found := Body.InnerHtml;
-
-            DebugLine('Browser catched HTML:');
-            DebugLine('---------------------------------------');
-            DebugLine(Found);
-            DebugLine('---------------------------------------');
-
-            // the Success code in the Browsers-title is not always complete
-            // sometimes it is cut off.
-            // todo: check if this is still the case
-
-            // could have been done with RegExp
-            // but this is the only place we need it
-            SearchFor := 'readonly="readonly" value="';
-            if Pos(SearchFor, Found) > 0 then
-            begin
-              System.Delete(Found, 1, Pos(SearchFor, Found) + Length(SearchFor) - 1);
-              if Pos('">', Found) > 0 then
-                Authorize_token := Copy(Found, 1, Pos('">', Found) - 1);
-            end;
-            if Authorize_token <> '' then
-              DebugLine('Authorization: We used the browser-HTML text');
+            System.Delete(Found, 1, Pos(SearchFor, Found) + Length(SearchFor) - 1);
+            if Pos('">', Found) > 0 then
+              Authorize_token_html := Copy(Found, 1, Pos('">', Found) - 1);
           end;
+          if Authorize_token_html <> '' then
+            DebugLine('Authorization: We have the browser-HTML text');
+        end;
+
+        if (Authorize_token = '') and (Authorize_token_html <> '') then
+        begin  // Make it the main token
+          Authorize_token := Authorize_token_html;
+          Authorize_token_html := '';
         end;
 
       end;
-
-      if Authorize_token <> '' then
-        LogLine('Authorization accepted')
-      else
-        LogLine('Authorization not accepted');
 
       Browser.Quit;
 
@@ -497,7 +499,7 @@ begin
   // If we haven't got a Authentication token we need to ask permission
   if Authorize_token = '' then
     GetAuthorize_token_interactive;
-  if Authorize_token = '' then
+  if (Authorize_token = '') then
     exit;
 
   LogLine('Getting new Refresh_token');
@@ -537,6 +539,15 @@ begin
   finally
     Response.Free;
   end;
+
+  if (access_token = '') and (Authorize_token_html <> '') then
+  begin
+    LogLine('Using backup Authentication token (html)');
+    Authorize_token := Authorize_token_html;
+    Authorize_token_html := '';
+    GetRefresh_token;
+  end;
+
 end;
 
 
