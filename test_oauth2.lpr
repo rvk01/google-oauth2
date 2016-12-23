@@ -7,7 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, frmMain, google_calendar, google_oauth2;
+  Forms, frmMain, google_oauth2, google_calendar, google_drive;
 
 {$R *.res}
 

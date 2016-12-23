@@ -37,7 +37,15 @@
   https://developers.google.com/oauthplayground/
   https://developers.google.com/google-apps/calendar/
   http://masashi-k.blogspot.nl/2013/06/sending-mail-with-gmail-using-xoauth2.html
+  https://www.limilabs.com/blog/oauth2-gmail-imap-service-account
+  https://github.com/onryldz/x-superobject
+  or
+  https://github.com/hgourvest/superobject
 
+
+
+  2016-12-12 delphi compatible
+  2016-12-12 using superobject for json
   2015-07-08 usebrowsertitle to get the auth.code from the title-bar (which sometimes didn't work)
   2015-07-08 implemented focemanualauth so you always need to enter auth.code manually
   2015-07-07 some extra debug information
@@ -52,20 +60,22 @@
 
 unit google_oauth2;
 
+{$IFDEF FPC}
 {$mode objfpc}{$H+}
+{$ENDIF}
+
 
 interface
 
 uses
-  Classes, StdCtrls, SysUtils,
-  fpjson, jsonparser;
+  Classes, StdCtrls, SysUtils {, fpjson, jsonparser};
 
 type
   GoogleScope = (goMail, goContacts, goCalendar, goDrive);
   GoogleScopeSet = set of GoogleScope;
 
 type
-  TGoogleOAuth2 = class
+  TGoogleOAuth2 = class(TObject)
   private
     { private declarations }
     FClient_id: string;
@@ -94,7 +104,7 @@ type
     { public declarations }
     constructor Create(client_id, client_secret: string); virtual;
     destructor Destroy; override;
-    function RetrieveJSONValue(JSON: TJSONData; Value: string): string;
+    // function RetrieveJSONValue(JSON: TJSONData; Value: string): string;
 
     procedure GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boolean = False);
     function GetXOAuth2Base64: string;
@@ -103,8 +113,7 @@ type
 
     property Tokens_refreshed: boolean read FTokens_refreshed write FTokens_refreshed;
     property Authorize_token: string read FAuthorize_token write FAuthorize_token;
-    property Authorize_token_html: string read FAuthorize_token_html
-      write FAuthorize_token_html;
+    property Authorize_token_html: string read FAuthorize_token_html write FAuthorize_token_html;
     property Refresh_token: string read FRefresh_token write FRefresh_token;
     property Access_token: string read FAccess_token write FAccess_token;
     property ForceManualAuth: boolean read FForceManualAuth write FForceManualAuth;
@@ -115,19 +124,26 @@ type
     property EMail: string read FEMail write FEMail;
     property LogMemo: TMemo read FLogMemo write FLogMemo;
     property DebugMemo: TMemo read FDebugMemo write FDebugMemo;
-  published
 
   end;
 
 implementation
 
+{$IFNDEF FPC}
+{$DEFINE USE_SUPEROBJECT}
+{$ENDIF}
+
+
 uses
   synacode, synautil, httpsend, // for communication
   ssl_openssl, // you need to include this one in your requirements
   comobj, // for ceating Browser-object
-  base64, // for the XOAuth2 token
+  ActiveX, // CoInitialize
+  Variants,
   Dialogs, // for inputbox
-  Forms; // for Screen.Width/Height
+  Forms, // for Screen.Width/Height
+  // base64, // for the XOAuth2 token, we use synapse now
+{$IFDEF USE_SUPEROBJECT} superobject {$ELSE} fpjson, jsonparser {$ENDIF};
 
 const
   token_filename = 'tokens.dat';
@@ -135,18 +151,100 @@ const
   AuthorizationUrl = 'https://accounts.google.com/o/oauth2/auth';
   RedirectUri = 'urn:ietf:wg:oauth:2.0:oob';
 
-function TGoogleOAuth2.RetrieveJSONValue(JSON: TJSONData; Value: string): string;
+{$IFNDEF FPC}
+
+  // we re-declare this one with string so Delphi doesn't give hints about string-conversion
+function EncodeURLElement(const Value: String): String;
+begin
+  Result := string(EncodeTriplet(ansistring(Value), '%', URLSpecialChar + URLFullSpecialChar));
+end;
+{$ENDIF}
+
+{$IFDEF USE_SUPEROBJECT}
+
+
+function RetrieveJSONValue(JSonString, Key: string; FromArray: String = ''; Index: Integer = 0): string;
 var
-  D: TJSONData;
+  obj: ISuperObject;
 begin
   Result := '';
-  if Assigned(JSON) then
+  obj := SO(JSonString);
+  if FromArray = '' then
   begin
-    D := JSON.FindPath(Value);
-    if assigned(D) then
-      Result := D.AsString;
+    // if obj.AsObject.Exists(Key) then Result := obj.S[Key];
+    Result := obj.S[Key];
+  end
+  else
+  begin
+    if obj.AsObject.Exists(FromArray) then
+      if obj.A[FromArray].O[Index].AsObject.Exists(Key) then
+          Result := obj.A[FromArray].O[Index].S[Key];
+  end;
+  Result := AnsiDequotedStr(Result, '"');
+end;
+{$ELSE}
+
+
+function RetrieveJSONValue(JSonString, Key: string; FromArray: String = ''; Index: Integer = 0): string;
+var
+  P: TJSONParser;
+  J, D, L: TJSONData;
+  Key1, Key2: String;
+begin
+  Result := '';
+  Key1 := Key;
+  Key2 := '';
+  if Pos('.', Key1) > 0 then
+  begin
+    Key2 := Copy(Key1, Pos('.', Key1) + 1);
+    Key1 := Copy(Key1, 1, Pos('.', Key1) - 1);
+  end;
+  P := TJSONParser.Create(JSonString);
+  try
+    J := P.Parse;
+    if Assigned(J) then
+    begin
+      if FromArray <> '' then
+      begin
+        D := J.FindPath(FromArray);
+        if Assigned(D) and (D.Count > 0) then
+        begin
+            D := D.Items[Index];
+            L := D.FindPath(Key1);
+            if assigned(L) then
+              Result := L.AsString;
+        end;
+      end
+      else
+      begin
+        if Key2 <> '' then
+        begin
+          D := J.FindPath(Key1);
+          if Assigned(D) then
+          begin
+            L := D.FindPath(Key2);
+            if assigned(L) then
+              Result := L.AsString;
+          end;
+        end
+        else
+        begin
+          D := J.FindPath(Key1);
+          if Assigned(D) then
+              Result := D.AsString;
+        end;
+      end;
+    end;
+  finally
+    // if Assigned(L) then L.Free;
+    // if Assigned(D) then D.Free;
+    // if Assigned(J) then J.Free;
+    P.Free;
   end;
 end;
+
+{$ENDIF}
+
 
 constructor TGoogleOAuth2.Create(client_id, client_secret: string);
 begin
@@ -180,58 +278,44 @@ end;
 procedure TGoogleOAuth2.LogLine(Value: string);
 begin
   if LogMemo <> nil then
-    LogMemo.Lines.Add(Value);
+      LogMemo.Lines.Add(Value);
   DebugLine(Value);
 end;
 
 procedure TGoogleOAuth2.DebugLine(Value: string);
 begin
   if DebugMemo <> nil then
-    DebugMemo.Lines.Add(Value);
+      DebugMemo.Lines.Add(Value);
 end;
 
-procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = [];
-  UseTokenFile: boolean = False);
+procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boolean = False);
 
   procedure GetInformation;
   var
     URL: string;
     Params: string;
     Response: TStringList;
-    P: TJSONParser;
-    J, D: TJSONData;
+    JSonStr: String;
   begin
-    Url := 'https://www.googleapis.com/plus/v1/people/me';
-    Params := 'access_token=' + access_token;
+    URL := 'https://www.googleapis.com/plus/v1/people/me';
+    Params := 'access_token=' + Access_token;
     Response := TStringList.Create;
     try
       if HttpGetText(URL + '?' + Params, Response) then
       begin
-        P := TJSONParser.Create(Response.Text);
-        try
-          J := P.Parse;
-          if Assigned(J) then
-          begin
-            D := J.FindPath('error');
-            if assigned(D) then
-            begin
-              LastErrorCode := RetrieveJSONValue(D, 'code');
-              LastErrorMessage := RetrieveJSONValue(D, 'message');
-            end;
-            Fullname := RetrieveJSONValue(J, 'displayName');
-            D := J.FindPath('emails');
-            if assigned(D) and (D.Count > 0) then
-              D := D.Items[0];
-            EMail := RetrieveJSONValue(D, 'value');
-          end;
-        finally
-          if assigned(J) then
-            J.Free;
-          P.Free;
-        end;
+        JSonStr := Response.Text;
+        LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
+        LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
+        if LastErrorCode <> '' then
+            LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+
+        Fullname := RetrieveJSONValue(JSonStr, 'displayName');
+        EMail := RetrieveJSONValue(JSonStr, 'value', 'emails', 0);
+
       end;
+
     finally
-      Response.Free;
+        Response.Free;
     end;
   end;
 
@@ -241,26 +325,16 @@ begin
     LogLine('No scope specified in GetAccess');
   end;
 
-  FScopes.Add('profile');
-  FScopes.Add('email');
+  FScopes.Add('profile'); // https://www.googleapis.com/auth/userinfo.profile
+  FScopes.Add('email'); // https://www.googleapis.com/auth/userinfo.email
   // always use profile/email to find the full name and email
 
-  if goCalendar in Scopes then
-  begin
-    FScopes.Add('https://www.googleapis.com/auth/calendar');
-  end;
+  if goMail in Scopes then FScopes.Add('https://mail.google.com/');
+  if goContacts in Scopes then FScopes.Add('https://www.google.com/m8/feeds/');
+  if goCalendar in Scopes then FScopes.Add('https://www.googleapis.com/auth/calendar');
+  if goDrive in Scopes then FScopes.Add('https://www.googleapis.com/auth/drive');
 
-  if goMail in Scopes then
-    FScopes.Add('https://mail.google.com/');
-
-  if goContacts in Scopes then
-    FScopes.Add('https://www.google.com/m8/feeds/');
-
-  if goDrive in Scopes then
-    FScopes.Add('https://www.googleapis.com/auth/drive');
-
-  if UseTokenFile then
-    LoadAccessRefreshTokens
+  if UseTokenFile then LoadAccessRefreshTokens
   else
   begin
     // LogLine('If you had an access_token please set it before calling GetAccess');
@@ -268,21 +342,21 @@ begin
 
   Fullname := '';
   EMail := '';
-  if access_token <> '' then
+  if Access_token <> '' then
   begin
     LogLine('Getting account information');
     GetInformation;
   end;
-  if (LastErrorCode <> '') or (access_token = '') then
+  if (LastErrorCode <> '') or (Access_token = '') then
   begin
-    if access_token <> '' then
+    if Access_token <> '' then
     begin
       LogLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
-      LogLine(Format('Invalid access_token %s', [access_token]));
+      LogLine(Format('Invalid access_token %s', [Access_token]));
       Access_token := ''; // <- invalidate
     end;
     GetAccess_token;
-    if access_token <> '' then
+    if Access_token <> '' then
     begin
       LogLine('Getting account information');
       GetInformation;
@@ -290,21 +364,21 @@ begin
       begin
         Tokens_refreshed := True; // and correct
         if UseTokenFile then
-          SaveAccessRefreshTokens
+            SaveAccessRefreshTokens
         else
-          LogLine('Please save the access_token');
+            LogLine('Please save the access_token');
       end;
     end;
   end;
 
   if EMail <> '' then
-    LogLine(Format('%s <%s>', [Fullname, EMail]));
+      LogLine(Format('%s <%s>', [Fullname, EMail]));
   if LastErrorCode <> '' then
-    LogLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
+      LogLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
   if EMail <> '' then
-    LogLine('We now have access')
+      LogLine('We now have access')
   else
-    LogLine('We don''t have access');
+      LogLine('We don''t have access');
 
 end;
 
@@ -312,15 +386,49 @@ end;
 function TGoogleOAuth2.GetXOAuth2Base64: string;
 begin
   Result := 'user=%s' + #1 + 'auth=Bearer %s' + #1 + #1;
-  Result := format(Result, [EMail, Access_token]);
-  Result := EncodeStringBase64(Result);
+  Result := Format(Result, [EMail, Access_token]);
+  // Result := EncodeStringBase64(Result);
+  Result := string(EncodeBase64(ansistring(Result)));
 end;
+
+{$IFDEF USE_SUPEROBJECT}
+
+
+procedure TGoogleOAuth2.LoadAccessRefreshTokens;
+var
+  JSON: ISuperObject;
+begin
+  try
+    JSON := TSuperObject.ParseFile(token_filename, True);
+    Refresh_token := JSON.S['refresh_token'];
+    Access_token := JSON.S['access_token'];
+  finally
+      JSON := nil;
+  end;
+end;
+
+procedure TGoogleOAuth2.SaveAccessRefreshTokens;
+var
+  JSON: ISuperObject;
+begin
+  try
+    JSON := SO;
+    JSON.S['refresh_token'] := Refresh_token;
+    JSON.S['access_token'] := Access_token;
+    JSON.SaveTo(token_filename);
+  finally
+      JSON := nil;
+  end;
+end;
+
+{$ELSE}
+
 
 procedure TGoogleOAuth2.LoadAccessRefreshTokens;
 var
   FS: TFileStream;
   P: TJSONParser;
-  J: TJSONData;
+  J, D: TJSONData;
 begin
   if FileExists(token_filename) then
   begin
@@ -328,12 +436,14 @@ begin
     P := TJSONParser.Create(FS);
     try
       J := P.Parse;
-      refresh_token := RetrieveJSONValue(J, 'refresh_token');
-      access_token := RetrieveJSONValue(J, 'access_token');
+      D := J.FindPath('refresh_token');
+      if assigned(D) then refresh_token := D.AsString;
+      D := J.FindPath('access_token');
+      if assigned(D) then access_token := D.AsString;
       LogLine('Tokens restored from ' + token_filename);
     finally
-      if assigned(J) then
-        J.Free;
+      if assigned(D) then D.Free;
+      // if assigned(J) then J.Free;
       P.Free;
       FS.Free;
     end;
@@ -344,8 +454,7 @@ procedure TGoogleOAuth2.SaveAccessRefreshTokens;
 var
   J: TJSONData;
 begin
-  J := TJSONObject.Create(['refresh_token', refresh_token, 'access_token',
-    access_token]);
+  J := TJSONObject.Create(['refresh_token', Refresh_token, 'access_token', Access_token]);
   try
     with TStringList.Create do
       try
@@ -353,12 +462,14 @@ begin
         SaveToFile(token_filename);
         LogLine('Tokens saved to ' + token_filename);
       finally
-        Free;
+          Free;
       end;
   finally
-    J.Free;
+      J.Free;
   end;
 end;
+{$ENDIF}
+
 
 procedure TGoogleOAuth2.GetAuthorize_token_interactive;
 var
@@ -388,7 +499,8 @@ begin
     Params := Params + '&scope=' + EncodeURLElement(Scope);
 
     LogLine('Authorizing...');
-    GoUrl := Url + '?' + Params;
+    GoUrl := URL + '?' + Params;
+    CoInitialize(nil);
     Browser := CreateOleObject('InternetExplorer.Application');
     try
       Browser.Visible := True;
@@ -396,21 +508,19 @@ begin
       Browser.Menubar := False;
       Browser.ToolBar := False;
       Browser.StatusBar := False;
-      Browser.Left := Screen.Width div 2 - 300;
-      Browser.Top := Screen.Height div 2 - 300;
+
       Browser.Width := 600;
       Browser.Height := 600;
+      if Screen.Height > 750 then Browser.Height := 750;
+      Browser.Left := Screen.Width div 2 - Browser.Width div 2;
+      Browser.Top := Screen.Height div 2 - Browser.Height div 2;
       Browser.Navigate(GoUrl);
 
       if ForceManualAuth then
       begin
-
-        Authorize_token := InputBox('Authentication code',
-          'Please enter the authorization code', '');
-
+        Authorize_token := InputBox('Authentication code', 'Please enter the authorization code', '');
         if Authorize_token <> '' then
-          DebugLine('Authorization: We have a manual Authorize_token');
-
+            DebugLine('Authorization: We have a manual Authorize_token');
       end
       else
       begin
@@ -459,6 +569,7 @@ begin
               Authorize_token_html := Copy(Found, 1, Pos('>', Found) - 1);
               Authorize_token_html := StringReplace(Authorize_token_html, '"', '', [rfReplaceAll]);
               Authorize_token_html := StringReplace(Authorize_token_html, #39, '', [rfReplaceAll]);
+              // Authorize_token_html := AnsiDequotedStr(Authorize_token_html, '"');
             end;
           end;
           if Authorize_token_html <> '' then
@@ -469,7 +580,7 @@ begin
         end;
 
         if (Authorize_token = '') and (Authorize_token_html <> '') then
-        begin  // Make it the main token
+        begin // Make it the main token
           Authorize_token := Authorize_token_html;
           Authorize_token_html := '';
         end;
@@ -480,6 +591,7 @@ begin
 
     finally
       Browser := Unassigned;
+      CoUnInitialize;
     end;
 
   except
@@ -498,22 +610,19 @@ var
   URL: string;
   Params: string;
   Response: TMemoryStream;
-  P: TJSONParser;
-  J, D: TJSONData;
+  JSonStr: String;
 begin
   LastErrorCode := '';
   LastErrorMessage := '';
 
   // If we haven't got a Authentication token we need to ask permission
-  if Authorize_token = '' then
-    GetAuthorize_token_interactive;
-  if (Authorize_token = '') then
-    exit;
+  if Authorize_token = '' then GetAuthorize_token_interactive;
+  if (Authorize_token = '') then exit;
 
   LogLine('Getting new Refresh_token');
   URL := GetTokenUrl;
   Params := '';
-  Params := Params + 'code=' + EncodeURLElement(authorize_token);
+  Params := Params + 'code=' + EncodeURLElement(Authorize_token);
   Params := Params + '&client_id=' + EncodeURLElement(FClient_id);
   Params := Params + '&client_secret=' + EncodeURLElement(FClient_secret);
   Params := Params + '&redirect_uri=' + EncodeURLElement(RedirectUri);
@@ -523,34 +632,23 @@ begin
     if HttpPostURL(URL, Params, Response) then
     begin
       Response.Position := 0;
-      P := TJSONParser.Create(Response);
-      try
-        J := P.Parse;
-        D := J.FindPath('error');
-        if assigned(D) then
-        begin
-          LastErrorCode := RetrieveJSONValue(D, 'code');
-          LastErrorMessage := RetrieveJSONValue(D, 'message');
-          LogLine(Format('Error in GetRefresh_token: %s - %s',
-            [LastErrorCode, LastErrorMessage]));
-        end;
-        refresh_token := RetrieveJSONValue(J, 'refresh_token');
-        access_token := RetrieveJSONValue(J, 'access_token');
-        if access_token <> '' then
-          LogLine('New refresh- & access_token received');
-      finally
-        if assigned(J) then
-          J.Free;
-        P.Free;
-      end;
+      JSonStr := string(PansiChar(Response.Memory));
+      LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
+      LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
+      if LastErrorCode <> '' then
+          LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+      Refresh_token := RetrieveJSONValue(JSonStr, 'refresh_token');
+      Access_token := RetrieveJSONValue(JSonStr, 'access_token');
+      if Access_token <> '' then
+          LogLine(Format('New refresh- & access_token received (%s, %s)', [Refresh_token, Access_token]));
     end;
   finally
-    Response.Free;
+      Response.Free;
   end;
 
-  if (access_token = '') and (Authorize_token_html <> '') then
+  if (Access_token = '') and (Authorize_token_html <> '') then
   begin
-    LogLine('Using backup Authentication token (html)');
+    LogLine('Using backup Authentication token (html), maybe the browser-title was cut off.');
     Authorize_token := Authorize_token_html;
     Authorize_token_html := '';
     GetRefresh_token;
@@ -558,63 +656,44 @@ begin
 
 end;
 
-
 procedure TGoogleOAuth2.GetAccess_token;
 var
   URL: string;
   Params: string;
   Response: TMemoryStream;
-  P: TJSONParser;
-  J, D: TJSONData;
+  JSonStr: String;
 begin
   LastErrorCode := '';
   LastErrorMessage := '';
 
   // If we haven't got a refresh token we need to get one or possibly re-authenticate
-  if Refresh_token = '' then
-    GetRefresh_token;
-  if Refresh_token = '' then
-    exit;
-  if Access_token <> '' then
-    exit; // we already received via getrefresh_token, so we can exit
+  if Refresh_token = '' then GetRefresh_token;
+  if Refresh_token = '' then exit;
+  if Access_token <> '' then exit; // we already received via getrefresh_token, so we can exit
 
   LogLine('Getting new Access_token');
   URL := GetTokenUrl;
   Params := '';
   Params := Params + 'client_id=' + EncodeURLElement(FClient_id);
   Params := Params + '&client_secret=' + EncodeURLElement(FClient_secret);
-  Params := Params + '&refresh_token=' + EncodeURLElement(refresh_token);
+  Params := Params + '&refresh_token=' + EncodeURLElement(Refresh_token);
   Params := Params + '&grant_type=' + EncodeURLElement('refresh_token');
   Response := TMemoryStream.Create;
   try
-    if HttpPostURL(URL, Params, Response) then
+    if HttpPostURL(URL, string(Params), Response) then
     begin
       Response.Position := 0;
-      P := TJSONParser.Create(Response);
-      try
-        J := P.Parse;
-        D := J.FindPath('error');
-        if assigned(D) then
-        begin
-          LastErrorCode := RetrieveJSONValue(D, 'code');
-          LastErrorMessage := RetrieveJSONValue(D, 'message');
-          if LastErrorMessage = '' then
-            LastErrorMessage := D.AsString;
-          LogLine(Format('Error in GetAccess_token: %s - %s',
-            [LastErrorCode, LastErrorMessage]));
-          // haal nieuwe refresh_token
-        end;
-        access_token := RetrieveJSONValue(J, 'access_token');
-        if access_token <> '' then
-          LogLine('New access_token received');
-      finally
-        if assigned(J) then
-          J.Free;
-        P.Free;
-      end;
+      JSonStr := string(PansiChar(Response.Memory));
+      LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
+      LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
+      if LastErrorCode <> '' then
+          LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+      Access_token := RetrieveJSONValue(JSonStr, 'access_token');
+      if Access_token <> '' then
+          LogLine(Format('New access_token received (%s)', [Access_token]));
     end;
   finally
-    Response.Free;
+      Response.Free;
   end;
 end;
 

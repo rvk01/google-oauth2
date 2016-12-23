@@ -61,6 +61,20 @@ begin
   inherited Destroy;
 end;
 
+function RetrieveJSONValue(JSON: TJSONData; Value: string): string;
+var
+  D: TJSONData;
+begin
+  Result := '';
+  if Assigned(JSON) then
+  begin
+    D := JSON.FindPath(Value);
+    if assigned(D) then
+      Result := D.AsString;
+  end;
+end;
+
+
 procedure TGoogleCalendar.Populate(aFilter: string = '');
 var
   Response: TStringList;
@@ -116,20 +130,18 @@ begin
           D := J.FindPath('error');
           if assigned(D) then
           begin
-            LastErrorCode := gOAuth2.RetrieveJSONValue(D, 'code');
-            LastErrorMessage := gOAuth2.RetrieveJSONValue(D, 'message');
+            LastErrorCode := RetrieveJSONValue(D, 'code');
+            LastErrorMessage := RetrieveJSONValue(D, 'message');
             gOAuth2.LogLine(format('Error %s: %s',
               [LastErrorCode, LastErrorMessage]));
             exit;
           end;
 
-          gOAuth2.DebugLine('Name: ' + gOAuth2.RetrieveJSONValue(J, 'summary'));
-          gOAuth2.DebugLine('Updated: ' + gOAuth2.RetrieveJSONValue(J, 'updated'));
-          gOAuth2.DebugLine('Timezone: ' + gOAuth2.RetrieveJSONValue(J, 'timeZone'));
-          gOAuth2.DebugLine('Next page: ' + gOAuth2.RetrieveJSONValue(J,
-            'nextPageToken'));
-          gOAuth2.DebugLine('Next sync: ' + gOAuth2.RetrieveJSONValue(J,
-            'nextSyncToken'));
+          gOAuth2.DebugLine('Name: ' + RetrieveJSONValue(J, 'summary'));
+          gOAuth2.DebugLine('Updated: ' + RetrieveJSONValue(J, 'updated'));
+          gOAuth2.DebugLine('Timezone: ' + RetrieveJSONValue(J, 'timeZone'));
+          gOAuth2.DebugLine('Next page: ' + RetrieveJSONValue(J, 'nextPageToken'));
+          gOAuth2.DebugLine('Next sync: ' + RetrieveJSONValue(J, 'nextSyncToken'));
 
           gOAuth2.LogLine('Busy filling dataset');
 
@@ -138,14 +150,14 @@ begin
           for I := 0 to D.Count - 1 do
           begin
             E := D.Items[I].FindPath('start');
-            StartDt := gOAuth2.RetrieveJSONValue(E, 'dateTime');
+            StartDt := RetrieveJSONValue(E, 'dateTime');
             if StartDt = '' then
-              StartDt := gOAuth2.RetrieveJSONValue(E, 'date');
+              StartDt := RetrieveJSONValue(E, 'date');
 
             E := D.Items[I].FindPath('end');
-            EndDt := gOAuth2.RetrieveJSONValue(E, 'dateTime');
+            EndDt := RetrieveJSONValue(E, 'dateTime');
             if EndDt = '' then
-              EndDt := gOAuth2.RetrieveJSONValue(E, 'date');
+              EndDt := RetrieveJSONValue(E, 'date');
 
             Append;
             // 2015-02-10T10:42:49.297Z
@@ -153,9 +165,9 @@ begin
             FieldByName('start').AsString := StartDt;
             FieldByName('end').AsString := EndDt;
             FieldByName('summary').AsString :=
-              gOAuth2.RetrieveJSONValue(D.Items[I], 'summary');
+              RetrieveJSONValue(D.Items[I], 'summary');
             FieldByName('htmllink').AsString :=
-              gOAuth2.RetrieveJSONValue(D.Items[I], 'htmlLink');
+              RetrieveJSONValue(D.Items[I], 'htmlLink');
             Self.Post;
             Application.ProcessMessages;
 
