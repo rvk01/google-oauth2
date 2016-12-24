@@ -1,17 +1,18 @@
 object Mainform: TMainform
-  Left = 308
-  Height = 703
-  Top = 200
+  Left = 244
+  Height = 538
+  Top = 106
   Width = 853
   Caption = 'Google OAuth 2.0 testapp'
-  ClientHeight = 703
+  ClientHeight = 538
   ClientWidth = 853
   OnCreate = FormCreate
+  OnShow = FormShow
   Position = poScreenCenter
   LCLVersion = '1.7'
   object PageControl1: TPageControl
     Left = 10
-    Height = 391
+    Height = 226
     Top = 302
     Width = 833
     ActivePage = TabSheet3
@@ -259,11 +260,11 @@ object Mainform: TMainform
     end
     object TabSheet3: TTabSheet
       Caption = 'Drive'
-      ClientHeight = 363
+      ClientHeight = 198
       ClientWidth = 825
       object PageControl5: TPageControl
         Left = 10
-        Height = 343
+        Height = 178
         Top = 10
         Width = 805
         ActivePage = TabSheet12
@@ -273,7 +274,7 @@ object Mainform: TMainform
         TabOrder = 0
         object TabSheet12: TTabSheet
           Caption = 'Upload'
-          ClientHeight = 315
+          ClientHeight = 150
           ClientWidth = 797
           object btnSimpleUpload: TButton
             Left = 24
@@ -299,6 +300,37 @@ object Mainform: TMainform
             Top = 112
             Width = 536
             TabOrder = 2
+          end
+          object Edit3: TEdit
+            Left = 264
+            Height = 23
+            Top = 64
+            Width = 512
+            TabOrder = 3
+          end
+          object Label6: TLabel
+            Left = 192
+            Height = 15
+            Top = 72
+            Width = 60
+            Caption = 'Description'
+            ParentColor = False
+          end
+          object Label7: TLabel
+            Left = 192
+            Height = 15
+            Top = 42
+            Width = 48
+            Caption = 'Filename'
+            ParentColor = False
+          end
+          object Edit4: TEdit
+            Left = 264
+            Height = 23
+            Top = 34
+            Width = 512
+            ReadOnly = True
+            TabOrder = 4
           end
         end
         object TabSheet13: TTabSheet

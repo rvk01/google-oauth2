@@ -6,7 +6,10 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, Grids, blcksock;
+  ComCtrls, ExtCtrls, Grids, blcksock, jsonConf, LMessages;
+
+const
+  WM_AFTER_SHOW = WM_USER + 300;
 
 type
 
@@ -34,6 +37,8 @@ type
     edBody: TMemo;
     Edit1: TEdit;
     Edit2: TEdit;
+    Edit3: TEdit;
+    Edit4: TEdit;
     edRecipient: TEdit;
     edSender: TEdit;
     edSubject: TEdit;
@@ -42,6 +47,8 @@ type
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
+    Label6: TLabel;
+    Label7: TLabel;
     Memo1: TMemo;
     Memo2: TMemo;
     PageControl1: TPageControl;
@@ -77,14 +84,19 @@ type
     procedure btnSimpleUploadClick(Sender: TObject);
     procedure btnUploadWithResumeClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure StringGrid1DblClick(Sender: TObject);
   private
     { private declarations }
+  protected
+    procedure AfterShow(var Msg: TLMessage); message WM_AFTER_SHOW;
   public
     { public declarations }
     procedure AddToLog(Str: string);
     procedure CheckTokenFile;
-    procedure Status(Sender: TObject; Reason: THookSocketReason; const Value: String);
+    procedure Status(Sender: TObject; Reason: THookSocketReason; const Value: string);
+    function GetJSONParam(filename, param: string): string;
+    procedure SetJSONParam(filename, param, Value: string);
   end;
 
 var
@@ -165,6 +177,23 @@ begin
 
   CheckTokenFile;
 
+end;
+
+procedure TMainform.AfterShow(var Msg: TLMessage);
+begin
+
+  if FileExists('Pendingupload.txt') then
+  begin
+    PageControl1.ActivePage := TabSheet3;
+    PageControl5.ActivePage := TabSheet12;
+    btnUploadWithResume.Click;
+  end;
+
+end;
+
+procedure TMainform.FormShow(Sender: TObject);
+begin
+  PostMessage(Self.Handle, WM_AFTER_SHOW, 0, 0);
 end;
 
 procedure TMainform.StringGrid1DblClick(Sender: TObject);
@@ -664,9 +693,9 @@ begin
   finally
     Response.Free;
     ds.Free;
-    btGetFileList.Enabled := true;
+    btGetFileList.Enabled := True;
   end;
-  //
+
 end;
 
 procedure TMainform.btClearDebugClick(Sender: TObject);
@@ -752,7 +781,7 @@ begin
 
 end;
 
-function Retrieve_Gdrive_resumable_URI(const URL, auth, FileName: string; const Data: TStream): string;
+function Retrieve_Gdrive_resumable_URI(const URL, auth, FileName, Description: string; const Data: TStream): string;
 var
   HTTP: THTTPSend;
   s: string;
@@ -761,7 +790,8 @@ begin
   Result := '';
   HTTP := THTTPSend.Create;
   try
-    s := Format('{' + CRLF + '"name": "%s"' + CRLF + '}', [ExtractFileName(FileName)]);
+    s := Format('{' + CRLF + '"name": "%s",' + CRLF + '"description": "%s"' + CRLF + '}',
+      [ExtractFileName(FileName), Description]);
     WriteStrToStream(HTTP.Document, ansistring(s));
     HTTP.Headers.Add('Authorization: Bearer ' + auth);
     HTTP.Headers.Add(Format('X-Upload-Content-Length: %d', [Data.Size]));
@@ -781,7 +811,7 @@ begin
   end;
 end;
 
-procedure TMainform.Status(Sender: TObject; Reason: THookSocketReason; const Value: String);
+procedure TMainform.Status(Sender: TObject; Reason: THookSocketReason; const Value: string);
 begin
   if Reason = HR_WriteCount then
   begin
@@ -809,7 +839,7 @@ begin
 
     if not HTTP.HTTPMethod('PUT', URL) then exit;
     Result := 'pre - ' + #13 + HTTP.Headers.Text + #13 + #13 + HTTP.ResultString; // for any errors
-    // Mainform.Memo2.Lines.Add(Result);
+    // Mainform.Memo2.Lines.Add('@@@'+Result);
     From := 0;
     if HTTP.ResultCode in [200, 201] then
     begin
@@ -882,22 +912,63 @@ begin
 end;
 
 procedure TMainform.btnUploadWithResumeClick(Sender: TObject);
+const
+  BaseURL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
 var
-  URL, Res: string;
+  Res: string;
   gOAuth2: TGoogleOAuth2;
   Data: TFileStream;
+  UploadFilename: string;
+  Description: string;
+  UploadURL: string;
+  Answer: TModalResult;
 begin
   // https://developers.google.com/drive/v3/web/manage-uploads
-  URL := 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
+
+  UploadFilename := '';
+  Description := '';
+  UploadURL := '';
+  if FileExists('Pendingupload.txt') then
+  begin
+    Answer := QuestionDlg('Question', 'A previous upload was in progress.' + #13 +
+      'Do you want to continue, abort or remove pending-status?',
+      mtCustom, [1, 'Continue', 2, 'Abort', 3, 'Remove status'], '');
+    if Answer = 2 then exit;
+    if Answer = 3 then
+    begin
+      DeleteFile('Pendingupload.txt');
+      ShowMessage('Pending upload-status removed');
+      exit;
+    end;
+    UploadURL := GetJSONparam('Pendingupload.txt', 'URL');
+    UploadFilename := GetJSONparam('Pendingupload.txt', 'Filename');
+    Description := GetJSONparam('Pendingupload.txt', 'Description');
+  end
+  else
+  begin // new upload
+
+    with TOpenDialog.Create(nil) do
+    try
+      Execute;
+      UploadFilename := Filename;
+    finally
+      Free;
+    end;
+    if UploadFilename = '' then exit;
+    Description := Edit3.Text;
+
+  end;
+  Edit4.Text := UploadFilename;
+  Edit3.Text := Description;
+
   gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
-  Data := TFileStream.Create('c:\temp\test.txt', fmOpenRead);
+  Data := TFileStream.Create(UploadFilename, fmOpenRead);
   try
     if not FileExists('tokens.dat') then
     begin
       // first get all access clicked on Groupbox
       btGetAccess.Click;
     end;
-
     gOAuth2.LogMemo := Memo1;
     gOAuth2.DebugMemo := Memo2;
     gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
@@ -907,38 +978,60 @@ begin
     // via the btGetAccess for all the scopes in Groupbox
     if gOAuth2.EMail = '' then exit;
 
+    if UploadURL = '' then
+      UploadURL := Retrieve_Gdrive_resumable_URI(BaseURL, gOAuth2.Access_token, UploadFilename, Description, Data);
 
-
-    // if pending transfer take that one
-    // and ask user
-    // "Previous upload was aborted. Do you want to resume?"
-
-
-    URL := Retrieve_Gdrive_resumable_URI(URL, gOAuth2.Access_token, 'test.txt', Data);
-    if URL <> '' then
+    if UploadURL <> '' then
     begin
-      Memo1.Lines.Add('Result request upload_id = ' + URL);
-      if pos('upload_id', URL) > 0 then
+      Memo1.Lines.Add('Result request upload_id = ' + UploadURL);
+      if pos('upload_id', UploadURL) > 0 then
       begin
-
-        // save url and filename in file
+        SetJsonparam('Pendingupload.txt', 'URL', UploadURL);
+        SetJsonparam('Pendingupload.txt', 'Filename', UploadFilename);
+        SetJsonparam('Pendingupload.txt', 'Description', Description);
 
         // do the transfer in chunks if needed
-        Res := Gdrivepost_resumable_file(URL, Data, ProgressBar1);
+        Res := Gdrivepost_resumable_file(UploadURL, Data, ProgressBar1);
         Memo1.Lines.Add(Res);
 
-        // if Res = 200 we can remove the url and filename
+        if Copy(Res, 1, 3) = '200' then
+          DeleteFile('Pendingupload.txt');
 
       end;
 
     end;
-
 
   finally
     Data.Free;
     gOAuth2.Free;
   end;
 
+end;
+
+function TMainform.GetJSONParam(filename, param: string): string;
+var
+  a: TJSONConfig;
+begin
+  a := TJSONConfig.Create(nil);
+  try
+    a.Filename := filename;
+    Result := a.GetValue(param, '');
+  finally
+    a.Free;
+  end;
+end;
+
+procedure TMainform.SetJSONParam(filename, param, Value: string);
+var
+  a: TJSONConfig;
+begin
+  a := TJSONConfig.Create(nil);
+  try
+    a.Filename := filename;
+    a.SetValue(param, Value);
+  finally
+    a.Free;
+  end;
 end;
 
 end.

@@ -9,10 +9,6 @@
       <Title Value="test_oauth2"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
-      <XPManifest>
-        <TextName Value="CompanyName.ProductName.AppName"/>
-        <TextDesc Value="Your application description."/>
-      </XPManifest>
       <Icon Value="0"/>
     </General>
     <i18n>
