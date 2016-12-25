@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, Grids, blcksock, jsonConf, LMessages;
+  ComCtrls, ExtCtrls, Grids, blcksock, jsonConf, LMessages, md5;
 
 const
   WM_AFTER_SHOW = WM_USER + 300;
@@ -38,7 +38,6 @@ type
     Edit1: TEdit;
     Edit2: TEdit;
     Edit3: TEdit;
-    Edit4: TEdit;
     edRecipient: TEdit;
     edSender: TEdit;
     edSubject: TEdit;
@@ -48,7 +47,7 @@ type
     Label4: TLabel;
     Label5: TLabel;
     Label6: TLabel;
-    Label7: TLabel;
+    ListBox1: TListBox;
     Memo1: TMemo;
     Memo2: TMemo;
     PageControl1: TPageControl;
@@ -86,6 +85,7 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure StringGrid1DblClick(Sender: TObject);
+    procedure TabSheet12Show(Sender: TObject);
   private
     { private declarations }
   protected
@@ -97,6 +97,7 @@ type
     procedure Status(Sender: TObject; Reason: THookSocketReason; const Value: string);
     function GetJSONParam(filename, param: string): string;
     procedure SetJSONParam(filename, param, Value: string);
+    procedure DeleteJSONPath(filename, param: string);
   end;
 
 var
@@ -182,12 +183,12 @@ end;
 procedure TMainform.AfterShow(var Msg: TLMessage);
 begin
 
-  if FileExists('Pendingupload.txt') then
-  begin
-    PageControl1.ActivePage := TabSheet3;
-    PageControl5.ActivePage := TabSheet12;
-    btnUploadWithResume.Click;
-  end;
+  //if FileExists('Pendingupload.txt') then
+  //begin
+  //  PageControl1.ActivePage := TabSheet3;
+  //  PageControl5.ActivePage := TabSheet12;
+  //  btnUploadWithResume.Click;
+  //end;
 
 end;
 
@@ -911,64 +912,118 @@ begin
 
 end;
 
+
+type
+  TPendingUpload = packed record
+    // id: integer;
+    filename: string;
+    url: string;
+    md5: string;
+    description: string;
+    // date: tdatetime;
+  end;
+
+type
+  PendingUploadArray = array of TPendingUpload;
+
+procedure Retrieve_All_upload_files(filename: string; var pendinguploads: PendingUploadArray);
+var
+  a: TJSONConfig;
+  b: TStringList;
+  i: integer;
+begin
+  a := TJSONConfig.Create(nil);
+  try
+    a.Filename := filename;
+    b := TStringList.Create;
+    Setlength(pendinguploads, 0);
+    a.EnumSubKeys('/', b);
+    Setlength(pendinguploads, b.Count);
+    for i := 0 to b.Count - 1 do
+    begin
+      with pendinguploads[i] do
+      begin
+        filename := a.Getvalue(b[i] + '/Filename', '');
+        url := a.Getvalue(b[i] + '/URL', '');
+        description := a.Getvalue(b[i] + '/Description', '');
+        md5 := a.Getvalue(b[i] + '/Md5', '');
+      end;
+    end;
+  finally
+    a.Free;
+    b.Free;
+  end;
+end;
+
 procedure TMainform.btnUploadWithResumeClick(Sender: TObject);
 const
   BaseURL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
+  Pendingfile = 'Pendingupload.json';
+var
+  gOAuth2: TGoogleOAuth2;
+
+  function GetNewUploadFile: TPendingUpload;
+  var
+    UploadFilename: string;
+    UploadURL: string;
+    Data: TStream;
+  begin
+    Result.Url := '';
+    UploadFilename := '';
+    with TOpenDialog.Create(nil) do
+      try
+        Execute;
+        UploadFilename := Filename;
+      finally
+        Free;
+      end;
+
+    if UploadFilename = '' then exit; // aborted
+    Result.Description := Edit3.Text;
+
+    // add to pending
+    Result.filename := Uploadfilename;
+    Result.description := Edit3.Text;
+    Result.url := ''; // not yet
+    Result.md5 := md5print(md5file(UploadFilename));;
+
+    Data := TFileStream.Create(UploadFilename, fmOpenRead);
+    try
+      UploadURL := Retrieve_Gdrive_resumable_URI(BaseURL, gOAuth2.Access_token,
+        Result.filename, Result.Description, Data);
+      if pos('upload_id', UploadURL) > 0 then
+      begin
+        Result.url := UploadURL;
+      end
+      else
+      begin
+        ShowMessage('Error getting upload_id');
+      end;
+    finally
+      Data.Free;
+    end;
+
+  end;
+
 var
   Res: string;
-  gOAuth2: TGoogleOAuth2;
   Data: TFileStream;
-  UploadFilename: string;
-  Description: string;
-  UploadURL: string;
   Answer: TModalResult;
+  md5: string;
+  Pending: PendingUploadArray;
+  Current: TPendingUpload;
+  qUrl: String;
+  i, j: integer;
 begin
   // https://developers.google.com/drive/v3/web/manage-uploads
 
-  UploadFilename := '';
-  Description := '';
-  UploadURL := '';
-  if FileExists('Pendingupload.txt') then
+  if not FileExists('tokens.dat') then
   begin
-    Answer := QuestionDlg('Question', 'A previous upload was in progress.' + #13 +
-      'Do you want to continue, abort or remove pending-status?',
-      mtCustom, [1, 'Continue', 2, 'Abort', 3, 'Remove status'], '');
-    if Answer = 2 then exit;
-    if Answer = 3 then
-    begin
-      DeleteFile('Pendingupload.txt');
-      ShowMessage('Pending upload-status removed');
-      exit;
-    end;
-    UploadURL := GetJSONparam('Pendingupload.txt', 'URL');
-    UploadFilename := GetJSONparam('Pendingupload.txt', 'Filename');
-    Description := GetJSONparam('Pendingupload.txt', 'Description');
-  end
-  else
-  begin // new upload
-
-    with TOpenDialog.Create(nil) do
-    try
-      Execute;
-      UploadFilename := Filename;
-    finally
-      Free;
-    end;
-    if UploadFilename = '' then exit;
-    Description := Edit3.Text;
-
+    // first get all access clicked on Groupbox
+    btGetAccess.Click;
   end;
-  Edit4.Text := UploadFilename;
-  Edit3.Text := Description;
-
   gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
-  Data := TFileStream.Create(UploadFilename, fmOpenRead);
   try
-    if not FileExists('tokens.dat') then
-    begin
-      // first get all access clicked on Groupbox
-      btGetAccess.Click;
-    end;
     gOAuth2.LogMemo := Memo1;
     gOAuth2.DebugMemo := Memo2;
     gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
@@ -978,35 +1033,124 @@ begin
     // via the btGetAccess for all the scopes in Groupbox
     if gOAuth2.EMail = '' then exit;
 
-    if UploadURL = '' then
-      UploadURL := Retrieve_Gdrive_resumable_URI(BaseURL, gOAuth2.Access_token, UploadFilename, Description, Data);
+    SetLength(Pending, 0);
+    if FileExists(pendingfile) then
+      retrieve_all_upload_files(pendingfile, pending);
 
-    if UploadURL <> '' then
-    begin
-      Memo1.Lines.Add('Result request upload_id = ' + UploadURL);
-      if pos('upload_id', UploadURL) > 0 then
+    Listbox1.Clear;
+    for j := 0 to Length(Pending) - 1 do
+      ListBox1.Items.Add(Pending[j].filename);
+
+    Answer := 2; // don't foget in case hasuploads is false
+
+    if Length(pending) > 0 then
+    begin;
+      Answer := QuestionDlg('Question', 'Previous upload(s) was/were in progress.' + #13 +
+        'Do you want to continue, abort or remove pending-status?',
+        mtCustom, [1, 'Continue all', 2, 'Upload another file and continue all', 3, 'Remove status'], '');
+      //if Answer = 2 then exit;
+      if Answer = 3 then
       begin
-        SetJsonparam('Pendingupload.txt', 'URL', UploadURL);
-        SetJsonparam('Pendingupload.txt', 'Filename', UploadFilename);
-        SetJsonparam('Pendingupload.txt', 'Description', Description);
+        DeleteFile(Pendingfile); // the one in fileutils doesn't need pchar()
+        ShowMessage('Pending upload-status removed');
+        exit;
+      end;
+    end;
+
+    if Answer = 2 then
+    begin // new upload
+
+      Current := GetNewUploadFile;
+      if Current.Url <> '' then
+      begin
+        Setlength(pending, Length(Pending) + 1);
+        pending[Length(Pending) - 1] := Current;
+        // and add it directory to the pendingfile
+        SetJsonparam(Pendingfile, Current.filename + '/Filename', Current.filename);
+        SetJsonparam(Pendingfile, Current.filename + '/Description', Current.description);
+        SetJsonparam(Pendingfile, Current.filename + '/URL', Current.url);
+        SetJsonparam(Pendingfile, Current.filename + '/Md5', Current.md5);
+      end;
+
+    end;
+
+    // now the main loop
+    for i := 0 to length(pending) - 1 do
+    begin
+
+      Listbox1.Clear;
+      for j := 0 to Length(Pending) - 1 do
+        ListBox1.Items.Add(Pending[j].filename);
+
+      Current := Pending[i];
+      // Memo1.Lines.Add('Result request upload_id = ' + UploadURL);
+      md5 := md5print(md5file(Current.filename)); // always before tstream
+
+      Data := TFileStream.Create(Current.Filename, fmOpenRead);
+      try
+
+        if Current.md5 <> md5 then
+        begin
+          Memo1.Lines.add(Current.filename + ' md5 mismatch');
+          // need to reupload
+          qURL := Retrieve_Gdrive_resumable_URI(BaseURL, gOAuth2.Access_token,
+            Current.Filename, Current.Description, Data);
+          if pos('upload_id', qURL) > 0 then
+          begin
+            Current.url := qURL;
+            Current.md5 := md5;
+            Pending[i] := Current;
+            // and add it directory to the pendingfile
+            SetJsonparam(Pendingfile, Current.filename + '/URL', Current.url);
+            SetJsonparam(Pendingfile, Current.filename + '/Md5', Current.md5);
+          end
+          else
+          begin
+            ShowMessage('Error getting upload_id');
+            Continue;
+          end;
+        end;
 
         // do the transfer in chunks if needed
-        Res := Gdrivepost_resumable_file(UploadURL, Data, ProgressBar1);
+        Res := Gdrivepost_resumable_file(Current.URL, Data, ProgressBar1);
         Memo1.Lines.Add(Res);
 
+        // remove from pending
         if Copy(Res, 1, 3) = '200' then
-          DeleteFile('Pendingupload.txt');
+          DeleteJSONPath(Pendingfile, Current.filename);
 
+        ProgressBar1.Position := 0;
+
+      finally
+        Data.Free;
       end;
 
     end;
 
   finally
-    Data.Free;
+    Listbox1.Clear;
     gOAuth2.Free;
   end;
 
 end;
+
+procedure TMainform.TabSheet12Show(Sender: TObject);
+const
+  Pendingfile = 'Pendingupload.json';
+var
+  Pending: PendingUploadArray;
+  j: Integer;
+begin
+  SetLength(Pending, 0);
+  if FileExists(pendingfile) then
+    retrieve_all_upload_files(pendingfile, pending);
+
+  Listbox1.Clear;
+  for j := 0 to Length(Pending) - 1 do
+    ListBox1.Items.Add(Pending[j].filename);
+
+end;
+
 
 function TMainform.GetJSONParam(filename, param: string): string;
 var
@@ -1027,8 +1171,23 @@ var
 begin
   a := TJSONConfig.Create(nil);
   try
+    a.Formatted := True;
     a.Filename := filename;
     a.SetValue(param, Value);
+  finally
+    a.Free;
+  end;
+end;
+
+procedure TMainform.DeleteJSONPath(filename, param: string);
+var
+  a: TJSONConfig;
+begin
+  a := TJSONConfig.Create(nil);
+  try
+    a.Formatted := True;
+    a.Filename := filename;
+    a.DeletePath(param);
   finally
     a.Free;
   end;

@@ -1,10 +1,10 @@
 object Mainform: TMainform
-  Left = 244
-  Height = 538
-  Top = 106
+  Left = 271
+  Height = 582
+  Top = 58
   Width = 853
   Caption = 'Google OAuth 2.0 testapp'
-  ClientHeight = 538
+  ClientHeight = 582
   ClientWidth = 853
   OnCreate = FormCreate
   OnShow = FormShow
@@ -12,8 +12,8 @@ object Mainform: TMainform
   LCLVersion = '1.7'
   object PageControl1: TPageControl
     Left = 10
-    Height = 226
-    Top = 302
+    Height = 282
+    Top = 290
     Width = 833
     ActivePage = TabSheet3
     Align = alClient
@@ -260,11 +260,11 @@ object Mainform: TMainform
     end
     object TabSheet3: TTabSheet
       Caption = 'Drive'
-      ClientHeight = 198
+      ClientHeight = 254
       ClientWidth = 825
       object PageControl5: TPageControl
         Left = 10
-        Height = 178
+        Height = 234
         Top = 10
         Width = 805
         ActivePage = TabSheet12
@@ -274,62 +274,59 @@ object Mainform: TMainform
         TabOrder = 0
         object TabSheet12: TTabSheet
           Caption = 'Upload'
-          ClientHeight = 150
+          ClientHeight = 206
           ClientWidth = 797
+          OnShow = TabSheet12Show
           object btnSimpleUpload: TButton
-            Left = 24
+            Left = 8
             Height = 25
-            Top = 32
+            Top = 8
             Width = 134
             Caption = 'btnSimpleUpload'
+            Enabled = False
             OnClick = btnSimpleUploadClick
             TabOrder = 0
           end
           object btnUploadWithResume: TButton
-            Left = 24
+            Left = 152
             Height = 25
-            Top = 72
+            Top = 8
             Width = 134
             Caption = 'btnUploadWithResume'
             OnClick = btnUploadWithResumeClick
             TabOrder = 1
           end
           object ProgressBar1: TProgressBar
-            Left = 24
+            Left = 8
             Height = 20
-            Top = 112
-            Width = 536
+            Top = 40
+            Width = 776
+            Anchors = [akTop, akLeft, akRight]
             TabOrder = 2
           end
           object Edit3: TEdit
-            Left = 264
+            Left = 448
             Height = 23
-            Top = 64
-            Width = 512
+            Top = 10
+            Width = 336
+            Anchors = [akTop, akLeft, akRight]
             TabOrder = 3
           end
           object Label6: TLabel
-            Left = 192
+            Left = 376
             Height = 15
-            Top = 72
+            Top = 10
             Width = 60
             Caption = 'Description'
             ParentColor = False
           end
-          object Label7: TLabel
-            Left = 192
-            Height = 15
-            Top = 42
-            Width = 48
-            Caption = 'Filename'
-            ParentColor = False
-          end
-          object Edit4: TEdit
-            Left = 264
-            Height = 23
-            Top = 34
-            Width = 512
-            ReadOnly = True
+          object ListBox1: TListBox
+            Left = 8
+            Height = 128
+            Top = 72
+            Width = 776
+            Anchors = [akTop, akLeft, akRight, akBottom]
+            ItemHeight = 0
             TabOrder = 4
           end
         end
@@ -411,12 +408,12 @@ object Mainform: TMainform
   end
   object Panel1: TPanel
     Left = 10
-    Height = 282
+    Height = 270
     Top = 10
     Width = 833
     Align = alTop
     BorderSpacing.Around = 10
-    ClientHeight = 282
+    ClientHeight = 270
     ClientWidth = 833
     TabOrder = 1
     object btGetAccess: TButton
@@ -430,8 +427,8 @@ object Mainform: TMainform
     end
     object Memo1: TMemo
       Left = 11
-      Height = 103
-      Top = 168
+      Height = 111
+      Top = 148
       Width = 811
       Align = alBottom
       BorderSpacing.Around = 10
