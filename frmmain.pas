@@ -648,7 +648,7 @@ var
   HTTP: THTTPSend;
   URL: string;
   json: TJSONObject;
-  dt: TJSONObject;
+  dt_start, dt_end: TJSONObject;
 begin
 
   ds := TGoogleCalendar.Create(Self, client_id, client_secret);
@@ -669,20 +669,23 @@ begin
     try
 
       json := TJSONObject.Create;
-      dt := TJSONObject.Create;
+      dt_start := TJSONObject.Create;
+      dt_end := TJSONObject.Create;
       try
         json.Add('summary', edTitle.Text);
         json.Add('location', edLocation.Text);
         json.Add('description', edDescription.Text);
-        dt.Add('dateTime', FormatDateTime('yyyy-mm-dd', edStart.Date) + 'T' + FormatDateTime('hh:nn:ss', Now));
-        dt.Add('timeZone', 'Europe/Amsterdam');
-        json.Add('start', dt);
-        json.Add('end', dt);
+        dt_start.Add('dateTime', FormatDateTime('yyyy-mm-dd', edStart.Date) + 'T' + FormatDateTime('hh:nn:ss', Now));
+        dt_start.Add('timeZone', 'Europe/Amsterdam');
+        dt_end.Add('dateTime', FormatDateTime('yyyy-mm-dd', edStart.Date) + 'T' + FormatDateTime('hh:nn:ss', Now));
+        dt_end.Add('timeZone', 'Europe/Amsterdam');
+        json.Add('start', dt_start);
+        json.Add('end', dt_end);
         WriteStrToStream(HTTP.Document, ansistring(json.AsJSON));
       finally
-        // grrrrrrrrrrrrrrrr
-        // dt.Free;
-        // json.Free;
+        json.Free;
+        // dt_start.Free; nope, added to json
+        // dt_end.Free; nope, added to json
       end;
 
       URL := 'https://www.googleapis.com/calendar/v3/calendars/' + ds.gOAuth2.EMail + '/events';
