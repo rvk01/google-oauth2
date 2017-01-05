@@ -42,6 +42,15 @@ Further Resources
 * https://developers.google.com/google-apps/calendar/
 * http://masashi-k.blogspot.nl/2013/06/sending-mail-with-gmail-using-xoauth2.html
 
+Synapse requirement
+=================
+For communication Synapse from Ararat is used. You can download the latest version from https://sourceforge.net/p/synalist/code/HEAD/tree/trunk/
+(at the top-right is a "Download snapshot"-button. Put it somewhere and in Lazarus you can choose "Package" > "Open package file".
+Browse to the folder for synapse and choose laz_synapse.lpk.
+Extra step is to add the ssl_openssl.pas before compiling for HTTPS access.
+You don't need to install anything. laz_synapse will now be available as package.
+You also need the openssl DLLs in your project directory (or search-path). libeay32.dll, libssl32.dll and ssleay32.dll.
+
 Todo
 ====
 
