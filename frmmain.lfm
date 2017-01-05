@@ -1,24 +1,25 @@
 object Mainform: TMainform
-  Left = 271
-  Height = 582
-  Top = 58
-  Width = 853
+  Left = 262
+  Height = 574
+  Top = 168
+  Width = 857
   Caption = 'Google OAuth 2.0 testapp'
-  ClientHeight = 582
-  ClientWidth = 853
+  ClientHeight = 574
+  ClientWidth = 857
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   OnShow = FormShow
   Position = poScreenCenter
   LCLVersion = '1.7'
   object PageControl1: TPageControl
     Left = 10
-    Height = 282
+    Height = 274
     Top = 290
-    Width = 833
-    ActivePage = TabSheet3
+    Width = 837
+    ActivePage = TabSheet2
     Align = alClient
     BorderSpacing.Around = 10
-    TabIndex = 3
+    TabIndex = 2
     TabOrder = 0
     object TabSheet1: TTabSheet
       Caption = 'GMail'
@@ -187,35 +188,126 @@ object Mainform: TMainform
     end
     object TabSheet2: TTabSheet
       Caption = 'Calendar'
-      ClientHeight = 363
-      ClientWidth = 825
+      ClientHeight = 246
+      ClientWidth = 829
       object PageControl3: TPageControl
         Left = 10
-        Height = 343
+        Height = 226
         Top = 10
-        Width = 805
-        ActivePage = TabSheet7
+        Width = 809
+        ActivePage = TabSheet6
         Align = alClient
         BorderSpacing.Around = 10
-        TabIndex = 1
+        TabIndex = 0
         TabOrder = 0
         object TabSheet6: TTabSheet
           Caption = 'New appointment'
-          ClientHeight = 358
-          ClientWidth = 744
+          ClientHeight = 198
+          ClientWidth = 801
           object Button5: TButton
             Left = 10
             Height = 88
             Top = 16
             Width = 118
-            Caption = 'not impl. yet'
+            Caption = 'Add event'
+            OnClick = Button5Click
             TabOrder = 0
+          end
+          object edTitle: TEdit
+            Left = 248
+            Height = 23
+            Top = 16
+            Width = 260
+            TabOrder = 1
+            Text = 'edTitle'
+          end
+          object edDescription: TEdit
+            Left = 248
+            Height = 23
+            Top = 46
+            Width = 260
+            TabOrder = 2
+            Text = 'edDescription'
+          end
+          object edStart: TDateEdit
+            Left = 248
+            Height = 23
+            Top = 110
+            Width = 260
+            CalendarDisplaySettings = [dsShowHeadings, dsShowDayNames]
+            DateOrder = doNone
+            ButtonWidth = 23
+            NumGlyphs = 1
+            MaxLength = 0
+            TabOrder = 4
+            Text = 'edStart'
+          end
+          object edEnd: TDateEdit
+            Left = 248
+            Height = 23
+            Top = 142
+            Width = 260
+            CalendarDisplaySettings = [dsShowHeadings, dsShowDayNames]
+            DateOrder = doNone
+            ButtonWidth = 23
+            NumGlyphs = 1
+            MaxLength = 0
+            TabOrder = 5
+            Text = 'edEnd'
+          end
+          object edLocation: TEdit
+            Left = 248
+            Height = 23
+            Top = 74
+            Width = 260
+            TabOrder = 3
+            Text = 'edLocation'
+          end
+          object Summary: TLabel
+            Left = 175
+            Height = 15
+            Top = 21
+            Width = 51
+            Caption = 'Summary'
+            ParentColor = False
+          end
+          object Summary1: TLabel
+            Left = 176
+            Height = 15
+            Top = 48
+            Width = 60
+            Caption = 'Description'
+            ParentColor = False
+          end
+          object Summary2: TLabel
+            Left = 175
+            Height = 15
+            Top = 80
+            Width = 46
+            Caption = 'Location'
+            ParentColor = False
+          end
+          object Summary3: TLabel
+            Left = 180
+            Height = 15
+            Top = 112
+            Width = 24
+            Caption = 'Start'
+            ParentColor = False
+          end
+          object Summary4: TLabel
+            Left = 184
+            Height = 15
+            Top = 144
+            Width = 20
+            Caption = 'End'
+            ParentColor = False
           end
         end
         object TabSheet7: TTabSheet
           Caption = 'Calendar'
-          ClientHeight = 315
-          ClientWidth = 797
+          ClientHeight = 198
+          ClientWidth = 801
           object btGetAppointments: TButton
             Left = 8
             Height = 25
@@ -227,9 +319,9 @@ object Mainform: TMainform
           end
           object StringGrid1: TStringGrid
             Left = 10
-            Height = 257
+            Height = 140
             Top = 48
-            Width = 777
+            Width = 781
             Align = alBottom
             Anchors = [akTop, akLeft, akRight, akBottom]
             BorderSpacing.Around = 10
@@ -237,7 +329,7 @@ object Mainform: TMainform
             OnDblClick = StringGrid1DblClick
           end
           object Edit1: TEdit
-            Left = 359
+            Left = 363
             Height = 23
             Top = 8
             Width = 428
@@ -247,7 +339,7 @@ object Mainform: TMainform
             Text = 'Edit1'
           end
           object Label4: TLabel
-            Left = 327
+            Left = 331
             Height = 15
             Top = 12
             Width = 26
@@ -260,22 +352,23 @@ object Mainform: TMainform
     end
     object TabSheet3: TTabSheet
       Caption = 'Drive'
-      ClientHeight = 254
-      ClientWidth = 825
+      ClientHeight = 246
+      ClientWidth = 829
       object PageControl5: TPageControl
-        Left = 10
-        Height = 234
-        Top = 10
-        Width = 805
-        ActivePage = TabSheet12
-        Align = alClient
+        Left = 4
+        Height = 199
+        Top = 16
+        Width = 826
+        ActivePage = TabSheet13
+        Align = alCustom
+        Anchors = [akTop, akLeft, akRight, akBottom]
         BorderSpacing.Around = 10
-        TabIndex = 0
+        TabIndex = 1
         TabOrder = 0
         object TabSheet12: TTabSheet
           Caption = 'Upload'
-          ClientHeight = 206
-          ClientWidth = 797
+          ClientHeight = 151
+          ClientWidth = 818
           OnShow = TabSheet12Show
           object btnSimpleUpload: TButton
             Left = 8
@@ -296,44 +389,36 @@ object Mainform: TMainform
             OnClick = btnUploadWithResumeClick
             TabOrder = 1
           end
-          object ProgressBar1: TProgressBar
-            Left = 8
-            Height = 20
-            Top = 40
-            Width = 776
+          object Edit3: TEdit
+            Left = 448
+            Height = 33
+            Top = 10
+            Width = 357
             Anchors = [akTop, akLeft, akRight]
             TabOrder = 2
           end
-          object Edit3: TEdit
-            Left = 448
-            Height = 23
-            Top = 10
-            Width = 336
-            Anchors = [akTop, akLeft, akRight]
-            TabOrder = 3
-          end
           object Label6: TLabel
             Left = 376
-            Height = 15
+            Height = 25
             Top = 10
-            Width = 60
+            Width = 90
             Caption = 'Description'
             ParentColor = False
           end
           object ListBox1: TListBox
             Left = 8
-            Height = 128
-            Top = 72
-            Width = 776
+            Height = 100
+            Top = 48
+            Width = 797
             Anchors = [akTop, akLeft, akRight, akBottom]
             ItemHeight = 0
-            TabOrder = 4
+            TabOrder = 3
           end
         end
         object TabSheet13: TTabSheet
           Caption = 'Files in Drive'
-          ClientHeight = 315
-          ClientWidth = 797
+          ClientHeight = 171
+          ClientWidth = 818
           object btGetFileList: TButton
             Left = 8
             Height = 25
@@ -345,17 +430,25 @@ object Mainform: TMainform
           end
           object StringGrid3: TStringGrid
             Left = 10
-            Height = 257
+            Height = 113
             Top = 48
-            Width = 777
+            Width = 798
             Align = alBottom
             Anchors = [akTop, akLeft, akRight, akBottom]
+            AutoFillColumns = True
             BorderSpacing.Around = 10
             TabOrder = 1
             OnDblClick = StringGrid1DblClick
+            ColWidths = (
+              64
+              178
+              178
+              178
+              179
+            )
           end
           object Edit2: TEdit
-            Left = 359
+            Left = 380
             Height = 23
             Top = 8
             Width = 428
@@ -365,7 +458,7 @@ object Mainform: TMainform
             Text = 'Edit1'
           end
           object Label5: TLabel
-            Left = 327
+            Left = 348
             Height = 15
             Top = 12
             Width = 26
@@ -373,7 +466,24 @@ object Mainform: TMainform
             Caption = 'Filter'
             ParentColor = False
           end
+          object Button1: TButton
+            Left = 192
+            Height = 25
+            Top = 8
+            Width = 75
+            Caption = 'Button1'
+            OnClick = Button1Click
+            TabOrder = 3
+          end
         end
+      end
+      object ProgressBar1: TProgressBar
+        Left = 24
+        Height = 20
+        Top = 216
+        Width = 780
+        Anchors = [akLeft, akRight, akBottom]
+        TabOrder = 1
       end
     end
     object TabSheet8: TTabSheet
@@ -410,11 +520,11 @@ object Mainform: TMainform
     Left = 10
     Height = 270
     Top = 10
-    Width = 833
+    Width = 837
     Align = alTop
     BorderSpacing.Around = 10
     ClientHeight = 270
-    ClientWidth = 833
+    ClientWidth = 837
     TabOrder = 1
     object btGetAccess: TButton
       Left = 136
@@ -429,7 +539,7 @@ object Mainform: TMainform
       Left = 11
       Height = 111
       Top = 148
-      Width = 811
+      Width = 815
       Align = alBottom
       BorderSpacing.Around = 10
       ScrollBars = ssAutoVertical
@@ -457,7 +567,7 @@ object Mainform: TMainform
       Left = 24
       Height = 96
       Top = 48
-      Width = 789
+      Width = 793
       Anchors = [akTop, akLeft, akRight]
       AutoFill = True
       Caption = 'Access (scope)'
@@ -470,7 +580,7 @@ object Mainform: TMainform
       ChildSizing.Layout = cclTopToBottomThenLeftToRight
       ChildSizing.ControlsPerLine = 2
       ClientHeight = 76
-      ClientWidth = 785
+      ClientWidth = 789
       ColumnLayout = clVerticalThenHorizontal
       Columns = 3
       Items.Strings = (
@@ -487,7 +597,7 @@ object Mainform: TMainform
       }
     end
     object ckForceManualAuth: TCheckBox
-      Left = 552
+      Left = 556
       Height = 19
       Top = 8
       Width = 261
@@ -496,7 +606,7 @@ object Mainform: TMainform
       TabOrder = 5
     end
     object ckUseBrowserTitle: TCheckBox
-      Left = 552
+      Left = 556
       Height = 19
       Top = 30
       Width = 238

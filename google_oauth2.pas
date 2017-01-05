@@ -236,9 +236,9 @@ begin
       end;
     end;
   finally
-    // if Assigned(L) then L.Free;
-    // if Assigned(D) then D.Free;
-    // if Assigned(J) then J.Free;
+    //if Assigned(L) then L.Free;
+    //if Assigned(D) then D.Free;
+    if Assigned(J) then J.Free;
     P.Free;
   end;
 end;
@@ -442,8 +442,8 @@ begin
       if assigned(D) then access_token := D.AsString;
       LogLine('Tokens restored from ' + token_filename);
     finally
-      if assigned(D) then D.Free;
-      // if assigned(J) then J.Free;
+      // if assigned(D) then D.Free;
+      if assigned(J) then J.Free;
       P.Free;
       FS.Free;
     end;

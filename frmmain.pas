@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, Grids, blcksock, jsonConf, LMessages, md5;
+  ComCtrls, ExtCtrls, Grids, blcksock, fpjson, jsonConf, LMessages, EditBtn, md5;
 
 const
   WM_AFTER_SHOW = WM_USER + 300;
@@ -23,6 +23,7 @@ type
     btClearLog: TButton;
     btnSimpleUpload: TButton;
     btnUploadWithResume: TButton;
+    Button1: TButton;
     Button5: TButton;
     btGetAppointments: TButton;
     btClearDebug: TButton;
@@ -32,12 +33,17 @@ type
 
     ckForceManualAuth: TCheckBox;
     ckUseBrowserTitle: TCheckBox;
+    edLocation: TEdit;
+    edStart: TDateEdit;
+    edEnd: TDateEdit;
 
 
     edBody: TMemo;
     Edit1: TEdit;
     Edit2: TEdit;
     Edit3: TEdit;
+    edTitle: TEdit;
+    edDescription: TEdit;
     edRecipient: TEdit;
     edSender: TEdit;
     edSubject: TEdit;
@@ -47,6 +53,7 @@ type
     Label4: TLabel;
     Label5: TLabel;
     Label6: TLabel;
+    Summary: TLabel;
     ListBox1: TListBox;
     Memo1: TMemo;
     Memo2: TMemo;
@@ -60,6 +67,10 @@ type
     StringGrid1: TStringGrid;
     StringGrid2: TStringGrid;
     StringGrid3: TStringGrid;
+    Summary1: TLabel;
+    Summary2: TLabel;
+    Summary3: TLabel;
+    Summary4: TLabel;
     TabSheet1: TTabSheet;
     TabSheet10: TTabSheet;
     TabSheet11: TTabSheet;
@@ -82,7 +93,10 @@ type
     procedure btClearDebugClick(Sender: TObject);
     procedure btnSimpleUploadClick(Sender: TObject);
     procedure btnUploadWithResumeClick(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure Button5Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure StringGrid1DblClick(Sender: TObject);
     procedure TabSheet12Show(Sender: TObject);
@@ -94,14 +108,15 @@ type
     { public declarations }
     procedure AddToLog(Str: string);
     procedure CheckTokenFile;
-    procedure Status(Sender: TObject; Reason: THookSocketReason; const Value: string);
     function GetJSONParam(filename, param: string): string;
     procedure SetJSONParam(filename, param, Value: string);
     procedure DeleteJSONPath(filename, param: string);
+    // function Download_Gdrive_File(id,auth, target: string): Boolean;
   end;
 
 var
   Mainform: TMainform;
+
 
 implementation
 
@@ -123,6 +138,7 @@ uses
 const
   client_id = '896304839415-nnl5e0smrtakhr9r2l3bno0tes2mrtgk.apps.googleusercontent.com';
   client_secret = 'dUahHDn3IMyhCIk3qD4tf8E_';
+var  JDrive: Tgoogledrive;
 
 procedure TMainform.AddToLog(Str: string);
 begin
@@ -156,6 +172,10 @@ begin
   Memo1.Clear;
   Memo2.Clear;
 
+  Jdrive := TGoogleDrive.Create(Self, client_id, client_secret);
+  Jdrive.Progress := ProgressBar1;
+  Jdrive.LogMemo := Memo1;
+
   //Left := (Screen.Width - round(Screen.Width * 0.8)) div 2;
   //Top := (Screen.Height - round(Screen.Height * 0.8)) div 2;
   Width := round(Screen.Width * 0.6);
@@ -164,6 +184,8 @@ begin
 
   ckForceManualAuth.Checked := False;
   ckUseBrowserTitle.Checked := True;
+  edStart.Date := Now;
+  edEnd.Date := Now;
 
   if CheckGroup1.Items.Count > 2 then
   begin
@@ -177,6 +199,13 @@ begin
   PageControl1.ActivePageIndex := 0;
 
   CheckTokenFile;
+
+end;
+
+procedure TMainform.FormDestroy(Sender: TObject);
+begin
+
+  Jdrive.Free;
 
 end;
 
@@ -197,8 +226,20 @@ begin
   PostMessage(Self.Handle, WM_AFTER_SHOW, 0, 0);
 end;
 
+
+
 procedure TMainform.StringGrid1DblClick(Sender: TObject);
-var
+begin
+
+  with TstringGrid(Sender) do
+  begin
+    if Jdrive.gOAuth2.EMail = '' then exit;
+    //showmessage(cells[6,Row]+#13+cells[4,Row]);
+    JDrive.DownloadFile(cells[6, Row], Extractfilepath(ParamStr(0)) + cells[4, Row]);
+  end;
+end;
+
+{var
   Browser: olevariant;
   GoUrl: variant;
 begin
@@ -220,8 +261,7 @@ begin
   Browser.Width := round(Screen.Width * 0.8);
   Browser.Height := round(Screen.Height * 0.8);
   Browser.Navigate(GoUrl);
-
-end;
+  }
 
 procedure TMainform.btGetAccessClick(Sender: TObject);
 var
@@ -514,10 +554,7 @@ var
   StartDt: string;
   EndDt: string;
   nwWidth: integer;
-
-var
   ds: TGoogleCalendar;
-
 begin
 
   Response := TStringList.Create;
@@ -600,6 +637,80 @@ begin
 
 end;
 
+procedure TMainform.Button1Click(Sender: TObject);
+begin
+  //CreateFolder(parentid: string = ''; foldername: string = '');
+end;
+
+procedure TMainform.Button5Click(Sender: TObject);
+var
+  ds: TGoogleCalendar;
+  HTTP: THTTPSend;
+  URL: string;
+  json: TJSONObject;
+  dt: TJSONObject;
+begin
+
+  ds := TGoogleCalendar.Create(Self, client_id, client_secret);
+  try
+    btGetAppointments.Enabled := False;
+
+    ds.gOAuth2.LogMemo := Memo1;
+    ds.gOAuth2.DebugMemo := Memo2;
+    ds.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
+    ds.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
+    ds.gOAuth2.GetAccess([goCalendar], True);
+
+    CheckTokenFile;
+
+    if ds.gOAuth2.EMail = '' then exit;
+
+    HTTP := THTTPSend.Create;
+    try
+
+      json := TJSONObject.Create;
+      dt := TJSONObject.Create;
+      try
+        json.Add('summary', edTitle.Text);
+        json.Add('location', edLocation.Text);
+        json.Add('description', edDescription.Text);
+        dt.Add('dateTime', FormatDateTime('yyyy-mm-dd', edStart.Date) + 'T' + FormatDateTime('hh:nn:ss', Now));
+        dt.Add('timeZone', 'Europe/Amsterdam');
+        json.Add('start', dt);
+        json.Add('end', dt);
+        WriteStrToStream(HTTP.Document, ansistring(json.AsJSON));
+      finally
+        // grrrrrrrrrrrrrrrr
+        // dt.Free;
+        // json.Free;
+      end;
+
+      URL := 'https://www.googleapis.com/calendar/v3/calendars/' + ds.gOAuth2.EMail + '/events';
+      HTTP.Headers.Add('Authorization: Bearer ' + ds.gOAuth2.Access_token);
+      HTTP.MimeType := 'application/json; charset=UTF-8';
+      if HTTP.HTTPMethod('POST', URL) then
+      begin
+        if HTTP.ResultCode = 200 then
+          Memo1.Lines.Add('event inserted')
+        else
+          Memo1.Lines.Add('error inserting');
+        Memo2.Lines.LoadFromStream(HTTP.Document);
+      end
+      else
+      begin
+        Memo1.Lines.Add('error');
+        Memo1.Lines.Add(HTTP.Headers.Text);
+      end;
+    finally
+      HTTP.Free;
+    end;
+
+  finally
+    ds.Free;
+    btGetAppointments.Enabled := True;
+  end;
+end;
+
 procedure TMainform.btGetFileListClick(Sender: TObject);
 var
   Response: TStringList;
@@ -608,32 +719,31 @@ var
   EndDt: string;
   nwWidth: integer;
 
-var
-  ds: TGoogleDrive;
-
 begin
 
   Response := TStringList.Create;
-  ds := TGoogleDrive.Create(Self, client_id, client_secret);
   try
     btGetFileList.Enabled := False;
 
-    ds.gOAuth2.LogMemo := Memo1;
-    ds.gOAuth2.DebugMemo := Memo2;
-    ds.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-    ds.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
-    ds.gOAuth2.GetAccess([goDrive], True);
+    JDrive.gOAuth2.LogMemo := Memo1;
+    Jdrive.gOAuth2.DebugMemo := Memo2;
+    Jdrive.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
+    Jdrive.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
+    Jdrive.gOAuth2.GetAccess([goDrive], True);
 
     CheckTokenFile;
 
-    if ds.gOAuth2.EMail = '' then
+    if Jdrive.gOAuth2.EMail = '' then
       exit;
 
-    ds.Open;
-    ds.Populate();
+    Jdrive.Open;
+
+    JDrive.CreateFolder('bbbb');
+
+    Jdrive.Populate();
 
     StringGrid3.Options := StringGrid3.Options + [goRowSelect];
-    StringGrid3.ColCount := 6;
+    StringGrid3.ColCount := 9;
     StringGrid3.RowCount := 2;
 
     //FieldDefs.Add('title', ftString, 25, False);
@@ -650,21 +760,27 @@ begin
     StringGrid3.Cells[3, 0] := 'Modified';
     StringGrid3.Cells[4, 0] := 'Filename';
     StringGrid3.Cells[5, 0] := 'Size';
-
+    StringGrid3.Cells[6, 0] := 'FileId';
+    StringGrid3.Cells[7, 0] := 'Token';
+    StringGrid3.Cells[8, 0] := 'Download URL';
     AddToLog('Busy filling grid');
     SendMessage(StringGrid3.Handle, WM_SETREDRAW, 0, 0);
     try
-      ds.First;
-      while not ds.EOF do
+      Jdrive.First;
+      while not Jdrive.EOF do
       begin
 
         with StringGrid3 do
         begin
-          Cells[1, StringGrid3.RowCount - 1] := ds.FieldByName('title').AsString;
-          Cells[2, StringGrid3.RowCount - 1] := ds.FieldByName('created').AsString;
-          Cells[3, StringGrid3.RowCount - 1] := ds.FieldByName('modified').AsString;
-          Cells[4, StringGrid3.RowCount - 1] := ds.FieldByName('filename').AsString;
-          Cells[5, StringGrid3.RowCount - 1] := ds.FieldByName('filesize').AsString;
+          Cells[1, StringGrid3.RowCount - 1] := Jdrive.FieldByName('title').AsString;
+          Cells[2, StringGrid3.RowCount - 1] := Jdrive.FieldByName('created').AsString;
+          Cells[3, StringGrid3.RowCount - 1] := Jdrive.FieldByName('modified').AsString;
+          Cells[4, StringGrid3.RowCount - 1] := Jdrive.FieldByName('filename').AsString;
+          Cells[5, StringGrid3.RowCount - 1] := Jdrive.FieldByName('filesize').AsString;
+          Cells[6, StringGrid3.RowCount - 1] := Jdrive.FieldByName('fileId').AsString;
+          Cells[7, StringGrid3.RowCount - 1] := Jdrive.gOAuth2.Access_token;
+          // Cells[8, StringGrid3.RowCount - 1] := Jdrive.FieldByName('downloadurl').AsString;
+
         end;
 
         for Q := 0 to 5 do
@@ -676,7 +792,7 @@ begin
         Application.ProcessMessages;
         StringGrid3.RowCount := StringGrid3.RowCount + 1;
 
-        ds.Next;
+        Jdrive.Next;
       end;
 
       StringGrid3.ColWidths[0] := 10;
@@ -693,7 +809,6 @@ begin
 
   finally
     Response.Free;
-    ds.Free;
     btGetFileList.Enabled := True;
   end;
 
@@ -742,7 +857,6 @@ end;
 procedure TMainform.btnSimpleUploadClick(Sender: TObject);
 var
   URL: string;
-  gOAuth2: TGoogleOAuth2;
   Data: TFileStream;
   ResultData: TStringList;
 begin
@@ -750,7 +864,7 @@ begin
   // URL := 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
   URL := 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
 
-  gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
+  JDrive.gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
   ResultData := TStringList.Create;
   Data := TFileStream.Create('c:\temp\test.txt', fmOpenRead);
   try
@@ -760,154 +874,24 @@ begin
       btGetAccess.Click;
     end;
 
-    gOAuth2.LogMemo := Memo1;
-    gOAuth2.DebugMemo := Memo2;
-    gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-    gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
-    gOAuth2.GetAccess([], True); // <- get from file
+    JDrive.gOAuth2.LogMemo := Memo1;
+    JDrive.gOAuth2.DebugMemo := Memo2;
+    JDrive.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
+    JDrive.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
+    JDrive.gOAuth2.GetAccess([], True); // <- get from file
     // no need for scope because we should already have access
     // via the btGetAccess for all the scopes in Groupbox
-    if gOAuth2.EMail = '' then
+    if JDrive.gOAuth2.EMail = '' then
       exit;
 
-    Gdrivepostfile(URL, gOAuth2.Access_token, 'test.txt', Data, ResultData);
+    Gdrivepostfile(URL, JDrive.gOAuth2.Access_token, 'test.txt', Data, ResultData);
 
     Memo1.Lines.Add(ResultData.Text);
 
   finally
     Data.Free;
     ResultData.Free;
-    gOAuth2.Free;
-  end;
-
-end;
-
-function Retrieve_Gdrive_resumable_URI(const URL, auth, FileName, Description: string; const Data: TStream): string;
-var
-  HTTP: THTTPSend;
-  s: string;
-  i: integer;
-begin
-  Result := '';
-  HTTP := THTTPSend.Create;
-  try
-    s := Format('{' + CRLF + '"name": "%s",' + CRLF + '"description": "%s"' + CRLF + '}',
-      [ExtractFileName(FileName), Description]);
-    WriteStrToStream(HTTP.Document, ansistring(s));
-    HTTP.Headers.Add('Authorization: Bearer ' + auth);
-    HTTP.Headers.Add(Format('X-Upload-Content-Length: %d', [Data.Size]));
-    HTTP.MimeType := 'application/json; charset=UTF-8';
-    if not HTTP.HTTPMethod('POST', URL) then exit;
-    Result := HTTP.ResultString; // for any errors
-    for i := 0 to HTTP.Headers.Count - 1 do
-    begin
-      if Pos('Location: ', HTTP.Headers.Strings[i]) > 0 then
-      begin
-        Result := StringReplace(HTTP.Headers.Strings[i], 'Location: ', '', []);
-        break;
-      end;
-    end;
-  finally
-    HTTP.Free;
-  end;
-end;
-
-procedure TMainform.Status(Sender: TObject; Reason: THookSocketReason; const Value: string);
-begin
-  if Reason = HR_WriteCount then
-  begin
-    ProgressBar1.StepBy(StrToIntDef(Value, 0));
-    Application.ProcessMessages;
-  end;
-end;
-
-function Gdrivepost_resumable_file(const URL: string; const Data: TStream; Progress: TProgressBar): string;
-const
-  MaxChunk = 40 * 256 * 1024; // ALWAYS chunks of 256KB
-var
-  HTTP: THTTPSend;
-  s: string;
-  i: integer;
-  From, Size: integer;
-  Tries, PrevFrom: integer;
-begin
-  Result := '';
-  HTTP := THTTPSend.Create;
-  try
-    // Always check if there already was aborted upload (is easiest)
-    HTTP.Headers.Add('Content-Length: 0');
-    HTTP.Headers.Add('Content-Range: bytes */*');
-
-    if not HTTP.HTTPMethod('PUT', URL) then exit;
-    Result := 'pre - ' + #13 + HTTP.Headers.Text + #13 + #13 + HTTP.ResultString; // for any errors
-    // Mainform.Memo2.Lines.Add('@@@'+Result);
-    From := 0;
-    if HTTP.ResultCode in [200, 201] then
-    begin
-      Result := '200 already uploaded completely';
-      exit;
-    end;
-    if HTTP.ResultCode = 308 then // Resume Incomplete
-    begin
-      for i := 0 to HTTP.Headers.Count - 1 do
-      begin
-        if Pos('Range: bytes=0-', HTTP.Headers.Strings[i]) > 0 then
-        begin
-          s := StringReplace(HTTP.Headers.Strings[i], 'Range: bytes=0-', '', []);
-          From := StrToIntDef(s, -1) + 1; // from 0 or max_range + 1
-          break;
-        end;
-      end;
-    end;
-    if not HTTP.ResultCode in [200, 201, 308] then exit;
-
-    Tries := 0;
-    PrevFrom := From;
-    Progress.Min := 0;
-    Progress.Max := Data.Size - 1;
-    HTTP.Sock.OnStatus := @Mainform.Status;
-    repeat
-
-      Progress.Position := From;
-
-      HTTP.Document.Clear;
-      HTTP.Headers.Clear;
-
-      // We need to resune upload from position "from"
-      Data.Position := From;
-      Size := Data.Size - From;
-      if Size > MaxChunk then Size := MaxChunk;
-      HTTP.Document.CopyFrom(Data, Size);
-      HTTP.Headers.Add(Format('Content-Range: bytes %d-%d/%d', [From, From + Size - 1, Data.Size]));
-      HTTP.MimeType := '';
-      Mainform.Memo2.Lines.Add(HTTP.Headers.Text);
-      if not HTTP.HTTPMethod('PUT', URL) then exit;
-
-      Result := HTTP.Headers.Text + #13 + #13 + HTTP.ResultString;
-      // Mainform.Memo2.Lines.Add(Result);
-
-      if HTTP.ResultCode in [200, 201] then Result := '200 Upload complete';
-      if HTTP.ResultCode = 308 then // Resume Incomplete
-      begin
-        for i := 0 to HTTP.Headers.Count - 1 do
-        begin
-          if Pos('Range: bytes=0-', HTTP.Headers.Strings[i]) > 0 then
-          begin
-            s := StringReplace(HTTP.Headers.Strings[i], 'Range: bytes=0-', '', []);
-            PrevFrom := From;
-            From := StrToIntDef(s, -1) + 1; // from 0 or max_range + 1
-            break;
-          end;
-        end;
-      end;
-
-      // no 308 with actual transfer is received, increase tries
-      if PrevFrom = From then Inc(Tries);
-
-    until (HTTP.ResultCode in [200, 201]) or (Tries > 1);
-
-  finally
-    HTTP.Free;
+    JDrive.gOAuth2.Free;
   end;
 
 end;
@@ -959,9 +943,6 @@ procedure TMainform.btnUploadWithResumeClick(Sender: TObject);
 const
   BaseURL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
   Pendingfile = 'Pendingupload.json';
-var
-  gOAuth2: TGoogleOAuth2;
-
   function GetNewUploadFile: TPendingUpload;
   var
     UploadFilename: string;
@@ -989,7 +970,7 @@ var
 
     Data := TFileStream.Create(UploadFilename, fmOpenRead);
     try
-      UploadURL := Retrieve_Gdrive_resumable_URI(BaseURL, gOAuth2.Access_token,
+      UploadURL := JDrive.GetUploadURI(BaseURL, JDrive.gOAuth2.Access_token,
         Result.filename, Result.Description, Data);
       if pos('upload_id', UploadURL) > 0 then
       begin
@@ -1012,7 +993,7 @@ var
   md5: string;
   Pending: PendingUploadArray;
   Current: TPendingUpload;
-  qUrl: String;
+  qUrl: string;
   i, j: integer;
 begin
   // https://developers.google.com/drive/v3/web/manage-uploads
@@ -1022,16 +1003,15 @@ begin
     // first get all access clicked on Groupbox
     btGetAccess.Click;
   end;
-  gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
   try
-    gOAuth2.LogMemo := Memo1;
-    gOAuth2.DebugMemo := Memo2;
-    gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-    gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
-    gOAuth2.GetAccess([], True); // <- get from file
+    JDrive.gOAuth2.LogMemo := Memo1;
+    JDrive.gOAuth2.DebugMemo := Memo2;
+    JDrive.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
+    JDrive.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
+    JDrive.gOAuth2.GetAccess([], True); // <- get from file
     // no need for scope because we should already have access
     // via the btGetAccess for all the scopes in Groupbox
-    if gOAuth2.EMail = '' then exit;
+    if JDrive.gOAuth2.EMail = '' then exit;
 
     SetLength(Pending, 0);
     if FileExists(pendingfile) then
@@ -1066,10 +1046,10 @@ begin
         Setlength(pending, Length(Pending) + 1);
         pending[Length(Pending) - 1] := Current;
         // and add it directory to the pendingfile
-        SetJsonparam(Pendingfile, Current.filename + '/Filename', Current.filename);
-        SetJsonparam(Pendingfile, Current.filename + '/Description', Current.description);
-        SetJsonparam(Pendingfile, Current.filename + '/URL', Current.url);
-        SetJsonparam(Pendingfile, Current.filename + '/Md5', Current.md5);
+        SetJsonparam(Pendingfile, 'a/Filename', Current.filename);
+        SetJsonparam(Pendingfile, 'a/Description', Current.description);
+        SetJsonparam(Pendingfile, 'a/URL', Current.url);
+        SetJsonparam(Pendingfile, 'a/Md5', Current.md5);
       end;
 
     end;
@@ -1093,7 +1073,7 @@ begin
         begin
           Memo1.Lines.add(Current.filename + ' md5 mismatch');
           // need to reupload
-          qURL := Retrieve_Gdrive_resumable_URI(BaseURL, gOAuth2.Access_token,
+          qURL := JDrive.GetUploadURI(BaseURL, JDrive.gOAuth2.Access_token,
             Current.Filename, Current.Description, Data);
           if pos('upload_id', qURL) > 0 then
           begin
@@ -1112,14 +1092,14 @@ begin
         end;
 
         // do the transfer in chunks if needed
-        Res := Gdrivepost_resumable_file(Current.URL, Data, ProgressBar1);
+        Res := JDrive.UploadResumableFile(Current.URL, Data);
         Memo1.Lines.Add(Res);
 
         // remove from pending
         if Copy(Res, 1, 3) = '200' then
-          DeleteJSONPath(Pendingfile, Current.filename);
+          DeleteJSONPath(Pendingfile, 'a');
 
-        ProgressBar1.Position := 0;
+        Jdrive.Progress.Position := 0;
 
       finally
         Data.Free;
@@ -1129,7 +1109,6 @@ begin
 
   finally
     Listbox1.Clear;
-    gOAuth2.Free;
   end;
 
 end;
@@ -1139,7 +1118,7 @@ const
   Pendingfile = 'Pendingupload.json';
 var
   Pending: PendingUploadArray;
-  j: Integer;
+  j: integer;
 begin
   SetLength(Pending, 0);
   if FileExists(pendingfile) then
@@ -1187,6 +1166,8 @@ begin
   try
     a.Formatted := True;
     a.Filename := filename;
+    a.SetValue(param + '/dummy', 'dummy'); // this will make sure changes are detected
+    // see http://bugs.freepascal.org/view.php?id=30907
     a.DeletePath(param);
   finally
     a.Free;
