@@ -644,26 +644,24 @@ end;
 
 procedure TMainform.Button5Click(Sender: TObject);
 var
-  ds: TGoogleCalendar;
+  gOAuth2: TGoogleOAuth2;
   HTTP: THTTPSend;
   URL: string;
   json: TJSONObject;
   dt_start, dt_end: TJSONObject;
 begin
 
-  ds := TGoogleCalendar.Create(Self, client_id, client_secret);
+  gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
   try
-    btGetAppointments.Enabled := False;
-
-    ds.gOAuth2.LogMemo := Memo1;
-    ds.gOAuth2.DebugMemo := Memo2;
-    ds.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-    ds.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
-    ds.gOAuth2.GetAccess([goCalendar], True);
+    gOAuth2.LogMemo := Memo1;
+    gOAuth2.DebugMemo := Memo2;
+    gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
+    gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
+    gOAuth2.GetAccess([goCalendar], True);
 
     CheckTokenFile;
 
-    if ds.gOAuth2.EMail = '' then exit;
+    if gOAuth2.EMail = '' then exit;
 
     HTTP := THTTPSend.Create;
     try
@@ -688,8 +686,8 @@ begin
         // dt_end.Free; nope, added to json
       end;
 
-      URL := 'https://www.googleapis.com/calendar/v3/calendars/' + ds.gOAuth2.EMail + '/events';
-      HTTP.Headers.Add('Authorization: Bearer ' + ds.gOAuth2.Access_token);
+      URL := 'https://www.googleapis.com/calendar/v3/calendars/' + gOAuth2.EMail + '/events';
+      HTTP.Headers.Add('Authorization: Bearer ' + gOAuth2.Access_token);
       HTTP.MimeType := 'application/json; charset=UTF-8';
       if HTTP.HTTPMethod('POST', URL) then
       begin
@@ -709,8 +707,7 @@ begin
     end;
 
   finally
-    ds.Free;
-    btGetAppointments.Enabled := True;
+    gOAuth2.Free;
   end;
 end;
 
