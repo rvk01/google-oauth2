@@ -310,6 +310,7 @@ begin
   FieldDefs.Add('filesize', ftString, 20, False);
   FieldDefs.Add('IsFolder', ftBoolean, 0, False);
   FieldDefs.Add('mimeType', ftString, 255, False);
+  FieldDefs.Add('iconLink', ftString, 255, False);
   CreateTable;
 
   gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
@@ -557,6 +558,7 @@ begin
             FieldByName('md5').AsString := RetrieveJSONValue(D.Items[I], 'md5Checksum');
             FieldByName('filesize').AsString := RetrieveJSONValue(D.Items[I], 'fileSize');
             FieldByName('mimeType').AsString := RetrieveJSONValue(D.Items[I], 'mimeType');
+            FieldByName('iconLink').AsString := RetrieveJSONValue(D.Items[I], 'iconLink');
             FieldByName('IsFolder').AsBoolean := FieldByName('mimeType').AsString = 'application/vnd.google-apps.folder';
             Self.Post;
             Application.ProcessMessages;

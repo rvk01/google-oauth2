@@ -23,6 +23,7 @@ type
     btClearLog: TButton;
     btnSimpleUpload: TButton;
     btnUploadWithResume: TButton;
+    Button1: TButton;
     Button5: TButton;
     btGetAppointments: TButton;
     btClearDebug: TButton;
@@ -33,6 +34,7 @@ type
 
     ckForceManualAuth: TCheckBox;
     ckUseBrowserTitle: TCheckBox;
+    Edit4: TEdit;
     edLocation: TEdit;
     edStart: TDateEdit;
     edEnd: TDateEdit;
@@ -47,12 +49,20 @@ type
     edRecipient: TEdit;
     edSender: TEdit;
     edSubject: TEdit;
+    ImageList1: TImageList;
     Label1: TLabel;
     Label2: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
     Label6: TLabel;
+    Label7: TLabel;
+    ListView1: TListView;
+    PageControl6: TPageControl;
+    Panel2: TPanel;
+    ProgressBar2: TProgressBar;
+    Splitter1: TSplitter;
+    StatusBar1: TStatusBar;
     Summary: TLabel;
     ListBox1: TListBox;
     Memo1: TMemo;
@@ -76,6 +86,8 @@ type
     TabSheet11: TTabSheet;
     TabSheet12: TTabSheet;
     TabSheet13: TTabSheet;
+    TabSheet14: TTabSheet;
+    TabSheet15: TTabSheet;
     TabSheet2: TTabSheet;
     TabSheet3: TTabSheet;
     TabSheet4: TTabSheet;
@@ -84,6 +96,7 @@ type
     TabSheet7: TTabSheet;
     TabSheet8: TTabSheet;
     TabSheet9: TTabSheet;
+    TreeView1: TTreeView;
     procedure btGetAccessClick(Sender: TObject);
     procedure btGetFileListClick(Sender: TObject);
     procedure btSendMailClick(Sender: TObject);
@@ -173,6 +186,9 @@ procedure TMainform.FormCreate(Sender: TObject);
 begin
   Memo1.Clear;
   Memo2.Clear;
+
+  ListView1.Clear;
+  Treeview1.Items.Clear;
 
   Jdrive := TGoogleDrive.Create(Self, client_id, client_secret);
   Jdrive.Progress := ProgressBar1;
@@ -652,10 +668,6 @@ begin
 
 end;
 
-procedure TMainform.Button1Click(Sender: TObject);
-begin
-  //CreateFolder(parentid: string = ''; foldername: string = '');
-end;
 
 procedure TMainform.Button5Click(Sender: TObject);
 var
@@ -829,6 +841,126 @@ begin
   finally
     Response.Free;
     btGetFileList.Enabled := True;
+  end;
+
+end;
+
+function DownloadHTTPStream(cURL: string; aStream: TStream): boolean;
+var
+  HTTP: THTTPSend;
+begin
+  Result := False;
+  HTTP := THTTPSend.Create;
+  try
+    { HTTPGetResult := } HTTP.HTTPMethod('GET', cURL);
+    if (HTTP.ResultCode >= 100) and (HTTP.ResultCode <= 299) then
+    begin
+      HTTP.Document.SaveToStream(aStream);
+      aStream.Position := 0;
+      Result := True;
+    end;
+  finally
+    HTTP.Free;
+  end;
+end;
+
+procedure LoadImageFromWeb(const Image: TImage; Url: string);
+var
+  mems: TMemoryStream;
+  R: TRect;
+begin
+  if Url <> '' then
+  begin
+    mems := TMemoryStream.Create;
+    try
+      if DownloadHTTPStream(Url, mems) then
+      begin
+        Image.Picture.LoadFromStream(mems);
+      end;
+    finally
+      mems.Free;
+    end;
+  end;
+end;
+
+
+procedure TMainform.Button1Click(Sender: TObject);
+var
+  Q: integer;
+  nwWidth: integer;
+  ListItem: TListItem;
+  Img: TImage;
+  IconLink: string;
+begin
+
+  JDrive.gOAuth2.LogMemo := Memo1;
+  Jdrive.gOAuth2.DebugMemo := Memo2;
+  Jdrive.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
+  Jdrive.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
+  Jdrive.gOAuth2.GetAccess([goDrive], True);
+
+  CheckTokenFile;
+
+  if Jdrive.gOAuth2.EMail = '' then
+    exit;
+
+  ListView1.Clear;
+  Treeview1.Items.Clear;
+  Application.ProcessMessages; // update views
+
+  Jdrive.Open;
+  Jdrive.Populate();
+
+  AddToLog('Busy filling grid');
+  try
+    Jdrive.First;
+    while not Jdrive.EOF do
+    begin
+      if Jdrive.FieldByName('IsFolder').AsBoolean then
+      begin
+        if TreeView1.Items.Count = 0 then
+        begin
+          Treeview1.Items.Add(nil,'Google Drive');
+        end;
+        Treeview1.Items.AddChild(Treeview1.Items.GetFirstNode, Jdrive.FieldByName('title').AsString);
+      end
+      else
+      begin
+        ListItem := ListView1.Items.Add;
+
+        (*
+        Load icon 90x90 to a stringlist
+        Convert them to 16x16
+        and load from internet in a thread
+
+        IconLink := Jdrive.FieldByName('iconLink').AsString;
+        if IconLink <> '' then
+        begin
+          Img := TImage.Create(nil);
+          try
+            LoadImageFromWeb(Img, IconLink);
+            // ShowMessage(Img.Width.ToString + 'x'+ Img.Height.ToString);
+            // ListItem.ImageIndex := ImageList1.AddIcon(IUm);
+          finally
+            Img.Free;
+          end;
+        end;
+        *)
+
+        ListItem.Caption := Jdrive.FieldByName('title').AsString;
+        ListItem.SubItems.Add(Jdrive.FieldByName('modified').AsString);
+        ListItem.SubItems.Add(Jdrive.FieldByName('filesize').AsString);
+        ListItem.SubItems.Add(Jdrive.FieldByName('mimeType').AsString);
+        ListItem.SubItems.Add(Jdrive.FieldByName('fileId').AsString);
+      end;
+
+      Jdrive.Next;
+    end;
+
+    AddToLog('Done filling grid');
+    TreeView1.FullExpand;
+
+  finally
   end;
 
 end;
