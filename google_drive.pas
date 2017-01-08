@@ -197,10 +197,10 @@ function TGoogleDrive.DownloadFile(id, TargetFile: string): boolean;
 var
   HTTPGetResult: boolean;
   URL: string;
+  SaveStream: TFileStream;
 begin
   Result := False;
-  if gOAuth2.EMail = '' then
-    exit;
+  if gOAuth2.EMail = '' then exit;
   Bytes := 0;
   MaxBytes := -1;
   DownHTTP := THTTPSend.Create;
@@ -215,7 +215,13 @@ begin
     //    if DownHTTP.ResultCode in [200, 201] then begin
     if (DownHTTP.ResultCode >= 100) and (DownHTTP.ResultCode <= 299) then
     begin
-      DownHTTP.Document.SaveToFile(TargetFile);
+      // DownHTTP.Document.SaveToFile(TargetFile); produces a leak ??????? Nope
+      SaveStream := TFileStream.Create(TargetFile, fmCreate or fmOpenWrite);
+      try
+        SaveStream.CopyFrom(DownHTTP.Document, 0);
+      finally
+        SaveStream.Free;
+      end;
       LogMemo.Lines.Add('Download OK [' + IntToStr(DownHTTP.ResultCode) + ']');
       Result := True;
     end
@@ -302,6 +308,8 @@ begin
   FieldDefs.Add('filename', ftString, 255, False);
   FieldDefs.Add('md5', ftString, 255, False);
   FieldDefs.Add('filesize', ftString, 20, False);
+  FieldDefs.Add('IsFolder', ftBoolean, 0, False);
+  FieldDefs.Add('mimeType', ftString, 255, False);
   CreateTable;
 
   gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
@@ -511,7 +519,8 @@ begin
     Params := Params + '&orderBy=folder,modifiedDate%20desc,title';
     if HttpGetText(URL + '?' + Params, Response) then
     begin
-      // gOAuth2.DebugLine(Response.Text);
+      gOAuth2.DebugLine(Response.Text);
+      Self.Clear(false); // remove all records
 
       P := TJSONParser.Create(Response.Text);
       try
@@ -540,19 +549,15 @@ begin
             // 2012-05-18T15:45:00+02:00
             FieldByName('title').AsString := RetrieveJSONValue(D.Items[I], 'title');
             FieldByName('fileId').AsString := RetrieveJSONValue(D.Items[I], 'id');
-            FieldByName('description').AsString :=
-              RetrieveJSONValue(D.Items[I], 'description');
-            FieldByName('created').AsString :=
-              RetrieveJSONValue(D.Items[I], 'createdDate');
-            FieldByName('modified').AsString :=
-              RetrieveJSONValue(D.Items[I], 'modifiedDate');
-            FieldByName('downloadurl').AsString :=
-              RetrieveJSONValue(D.Items[I], 'downloadUrl');
-            FieldByName('filename').AsString :=
-              RetrieveJSONValue(D.Items[I], 'originalFilename');
+            FieldByName('description').AsString := RetrieveJSONValue(D.Items[I], 'description');
+            FieldByName('created').AsString := RetrieveJSONValue(D.Items[I], 'createdDate');
+            FieldByName('modified').AsString := RetrieveJSONValue(D.Items[I], 'modifiedDate');
+            FieldByName('downloadurl').AsString := RetrieveJSONValue(D.Items[I], 'downloadUrl');
+            FieldByName('filename').AsString := RetrieveJSONValue(D.Items[I], 'originalFilename');
             FieldByName('md5').AsString := RetrieveJSONValue(D.Items[I], 'md5Checksum');
-            FieldByName('filesize').AsString :=
-              RetrieveJSONValue(D.Items[I], 'fileSize');
+            FieldByName('filesize').AsString := RetrieveJSONValue(D.Items[I], 'fileSize');
+            FieldByName('mimeType').AsString := RetrieveJSONValue(D.Items[I], 'mimeType');
+            FieldByName('IsFolder').AsBoolean := FieldByName('mimeType').AsString = 'application/vnd.google-apps.folder';
             Self.Post;
             Application.ProcessMessages;
 

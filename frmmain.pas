@@ -23,12 +23,12 @@ type
     btClearLog: TButton;
     btnSimpleUpload: TButton;
     btnUploadWithResume: TButton;
-    Button1: TButton;
     Button5: TButton;
     btGetAppointments: TButton;
     btClearDebug: TButton;
     Button8: TButton;
     btGetContacts: TButton;
+    ckHideFolders: TCheckBox;
     CheckGroup1: TCheckGroup;
 
     ckForceManualAuth: TCheckBox;
@@ -95,6 +95,7 @@ type
     procedure btnUploadWithResumeClick(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button5Click(Sender: TObject);
+    procedure ckHideFoldersClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
@@ -112,6 +113,7 @@ type
     procedure SetJSONParam(filename, param, Value: string);
     procedure DeleteJSONPath(filename, param: string);
     // function Download_Gdrive_File(id,auth, target: string): Boolean;
+    procedure FillDriveGrid;
   end;
 
 var
@@ -181,6 +183,7 @@ begin
   Width := round(Screen.Width * 0.6);
   Height := round(Screen.Height * 0.9) - 100;
   Top := 100;
+  Self.WindowState := wsMaximized; // for now
 
   ckForceManualAuth.Checked := False;
   ckUseBrowserTitle.Checked := True;
@@ -229,13 +232,25 @@ end;
 
 
 procedure TMainform.StringGrid1DblClick(Sender: TObject);
+var
+  Filename: string;
+  FileId: string;
 begin
+  if Jdrive.gOAuth2.EMail = '' then exit;
 
-  with TstringGrid(Sender) do
+  with TStringGrid(Sender) do
   begin
-    if Jdrive.gOAuth2.EMail = '' then exit;
-    //showmessage(cells[6,Row]+#13+cells[4,Row]);
-    JDrive.DownloadFile(cells[6, Row], Extractfilepath(ParamStr(0)) + cells[4, Row]);
+    FileId := cells[6, Row];
+    Filename := cells[4, Row];
+    if Filename = '' then Filename := cells[1, Row]; // title
+  end;
+
+  Filename := Extractfilepath(ParamStr(0)) + Filename;
+  // check for valid filename
+  try
+    JDrive.DownloadFile(FileId, Filename);
+  except
+    ShowMessage('Could not safe ' + Filename);
   end;
 end;
 
@@ -711,14 +726,68 @@ begin
   end;
 end;
 
+procedure TMainform.ckHideFoldersClick(Sender: TObject);
+begin
+  FillDriveGrid;
+end;
+
+procedure TMainform.FillDriveGrid;
+var
+  Q: integer;
+  nwWidth: integer;
+begin
+
+  StringGrid3.RowCount := 2;
+  AddToLog('Busy filling grid');
+  SendMessage(StringGrid3.Handle, WM_SETREDRAW, 0, 0);
+  try
+    Jdrive.First;
+    while not Jdrive.EOF do
+    begin
+      if not ckHideFolders.Checked or not Jdrive.FieldByName('IsFolder').AsBoolean then
+      begin
+        with StringGrid3 do
+        begin
+          Cells[1, StringGrid3.RowCount - 1] := Jdrive.FieldByName('title').AsString;
+          Cells[2, StringGrid3.RowCount - 1] := Jdrive.FieldByName('created').AsString;
+          Cells[3, StringGrid3.RowCount - 1] := Jdrive.FieldByName('modified').AsString;
+          Cells[4, StringGrid3.RowCount - 1] := Jdrive.FieldByName('filename').AsString;
+          Cells[5, StringGrid3.RowCount - 1] := Jdrive.FieldByName('filesize').AsString;
+          Cells[6, StringGrid3.RowCount - 1] := Jdrive.FieldByName('fileId').AsString;
+          Cells[7, StringGrid3.RowCount - 1] := Jdrive.FieldByName('mimeType').AsString;
+          if Jdrive.FieldByName('mimeType').AsString = 'application/vnd.google-apps.folder' then
+            Cells[7, StringGrid3.RowCount - 1] := '<dir>';
+        end;
+
+        StringGrid3.RowCount := StringGrid3.RowCount + 1;
+
+      end;
+
+      Jdrive.Next;
+    end;
+
+    if (StringGrid3.RowCount > 2) then
+      StringGrid3.RowCount := StringGrid3.RowCount - 1;
+
+    StringGrid3.AutoSizeColumns;
+    StringGrid3.ColWidths[0] := 10;
+    StringGrid3.ColWidths[6] := 1;
+
+    AddToLog('Done filling grid');
+
+  finally
+    SendMessage(StringGrid3.Handle, WM_SETREDRAW, 1, 0);
+    StringGrid3.Repaint;
+    StringGrid3.SetFocus;
+  end;
+
+end;
+
 procedure TMainform.btGetFileListClick(Sender: TObject);
 var
   Response: TStringList;
-  Q: integer;
   StartDt: string;
   EndDt: string;
-  nwWidth: integer;
-
 begin
 
   Response := TStringList.Create;
@@ -738,74 +807,24 @@ begin
 
     Jdrive.Open;
 
-    JDrive.CreateFolder('bbbb');
+    // JDrive.CreateFolder('bbbb');
 
     Jdrive.Populate();
 
     StringGrid3.Options := StringGrid3.Options + [goRowSelect];
-    StringGrid3.ColCount := 9;
+    StringGrid3.ColCount := 8;
+
     StringGrid3.RowCount := 2;
-
-    //FieldDefs.Add('title', ftString, 25, False);
-    //FieldDefs.Add('description', ftString, 255, False);
-    //FieldDefs.Add('created', ftDateTime, 0, False);
-    //FieldDefs.Add('modified', ftDateTime, 0, False);
-    //FieldDefs.Add('downloadurl', ftString, 255, False);
-    //FieldDefs.Add('filename', ftString, 255, False);
-    //FieldDefs.Add('md5', ftString, 255, False);
-    //FieldDefs.Add('filesize', ftInteger, 0, False);
-
     StringGrid3.Cells[1, 0] := 'Title';
     StringGrid3.Cells[2, 0] := 'Created';
     StringGrid3.Cells[3, 0] := 'Modified';
     StringGrid3.Cells[4, 0] := 'Filename';
     StringGrid3.Cells[5, 0] := 'Size';
     StringGrid3.Cells[6, 0] := 'FileId';
-    StringGrid3.Cells[7, 0] := 'Token';
-    StringGrid3.Cells[8, 0] := 'Download URL';
-    AddToLog('Busy filling grid');
-    SendMessage(StringGrid3.Handle, WM_SETREDRAW, 0, 0);
-    try
-      Jdrive.First;
-      while not Jdrive.EOF do
-      begin
+    StringGrid3.Cells[7, 0] := 'MimeType';
+    StringGrid3.AutoFillColumns := False;
 
-        with StringGrid3 do
-        begin
-          Cells[1, StringGrid3.RowCount - 1] := Jdrive.FieldByName('title').AsString;
-          Cells[2, StringGrid3.RowCount - 1] := Jdrive.FieldByName('created').AsString;
-          Cells[3, StringGrid3.RowCount - 1] := Jdrive.FieldByName('modified').AsString;
-          Cells[4, StringGrid3.RowCount - 1] := Jdrive.FieldByName('filename').AsString;
-          Cells[5, StringGrid3.RowCount - 1] := Jdrive.FieldByName('filesize').AsString;
-          Cells[6, StringGrid3.RowCount - 1] := Jdrive.FieldByName('fileId').AsString;
-          Cells[7, StringGrid3.RowCount - 1] := Jdrive.gOAuth2.Access_token;
-          // Cells[8, StringGrid3.RowCount - 1] := Jdrive.FieldByName('downloadurl').AsString;
-
-        end;
-
-        for Q := 0 to 5 do
-        begin
-          nwWidth := StringGrid3.Canvas.TextWidth(StringGrid3.Cells[Q, StringGrid3.RowCount - 1]);
-          if nwWidth > StringGrid3.ColWidths[Q] then
-            StringGrid3.ColWidths[Q] := nwWidth + 20;
-        end;
-        Application.ProcessMessages;
-        StringGrid3.RowCount := StringGrid3.RowCount + 1;
-
-        Jdrive.Next;
-      end;
-
-      StringGrid3.ColWidths[0] := 10;
-      while (StringGrid3.RowCount > 2) and (StringGrid3.Cells[3, 1] = '') do
-        StringGrid3.DeleteRow(1);
-
-      AddToLog('Done filling grid');
-
-    finally
-      SendMessage(StringGrid3.Handle, WM_SETREDRAW, 1, 0);
-      StringGrid3.Repaint;
-      StringGrid3.SetFocus;
-    end;
+    FillDriveGrid;
 
   finally
     Response.Free;
@@ -1046,10 +1065,10 @@ begin
         Setlength(pending, Length(Pending) + 1);
         pending[Length(Pending) - 1] := Current;
         // and add it directory to the pendingfile
-        SetJsonparam(Pendingfile, 'a/Filename', Current.filename);
-        SetJsonparam(Pendingfile, 'a/Description', Current.description);
-        SetJsonparam(Pendingfile, 'a/URL', Current.url);
-        SetJsonparam(Pendingfile, 'a/Md5', Current.md5);
+        SetJsonparam(Pendingfile, Current.filename + '/Filename', Current.filename);
+        SetJsonparam(Pendingfile, Current.filename + '/Description', Current.description);
+        SetJsonparam(Pendingfile, Current.filename + '/URL', Current.url);
+        SetJsonparam(Pendingfile, Current.filename + '/Md5', Current.md5);
       end;
 
     end;
@@ -1097,7 +1116,7 @@ begin
 
         // remove from pending
         if Copy(Res, 1, 3) = '200' then
-          DeleteJSONPath(Pendingfile, 'a');
+          DeleteJSONPath(Pendingfile, Current.filename);
 
         Jdrive.Progress.Position := 0;
 
