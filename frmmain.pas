@@ -215,7 +215,7 @@ begin
     CheckGroup1.CheckEnabled[1] := False;
   end;
 
-  PageControl1.ActivePageIndex := 0;
+  // PageControl1.ActivePageIndex := 0;
 
   CheckTokenFile;
 
@@ -251,7 +251,8 @@ procedure TMainform.StringGrid1DblClick(Sender: TObject);
 var
   Filename: string;
   FileId: string;
-  A:TGFileRevisions;
+  A: TGFileRevisions;
+  Rev: Integer;
 begin
   if Jdrive.gOAuth2.EMail = '' then exit;
 
@@ -266,8 +267,14 @@ begin
   // check for valid filename
   try
     // JDrive.DownloadFile(FileId, Filename);
-    A:=JDrive.GetFileVersions(FileId);
-    showmessage(A[0].fileid+#13+A[0].mimetype+#13+A[0].modifieddate);
+    A := JDrive.GetFileVersions(FileId);
+    if Length(A) > 0 then
+    begin
+      for Rev := 0 to Length(A) - 1 do
+        Memo1.Lines.Add(A[Rev].fileid + ' - ' + A[Rev].mimetype + ' - ' + A[Rev].modifieddate)
+    end
+    else
+      Memo1.Lines.Add('no revisions');
   except
     ShowMessage('Could not safe ' + Filename);
   end;
@@ -918,7 +925,7 @@ begin
   TreeView1.Images := ImageList1;
 
   // ListView1.ViewStyle:=vsIcon;
-  ListView1.MultiSelect:=true;
+  ListView1.MultiSelect := True;
 
   ListView1.LargeImages := nil;
   ListView1.SmallImages := nil;

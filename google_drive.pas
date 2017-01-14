@@ -10,13 +10,11 @@ uses
   Classes, SysUtils, DB, Forms, google_oauth2, fpjson, jsonparser, memds,
   httpsend, blcksock, typinfo, ComCtrls, synautil, StdCtrls;
 
-
-
 type TGFileRevision = packed record
-fileid:string;
-modifiedDate:string;
-mimetype:string;
-end;
+    fileid: string;
+    modifiedDate: string;
+    mimetype: string;
+  end;
 
 type TGFileRevisions = array of TGfileRevision;
 
@@ -54,7 +52,7 @@ type
     property LogMemo: TMemo read FLogMemo write FLogMemo;
     property DebugMemo: TMemo read FDebugMemo write FDebugMemo;
     procedure CreateFolder(foldername: string; parentid: string = '');
-    function GetFileVersions(fileid:string):TGFileRevisions;
+    function GetFileVersions(fileid: string): TGFileRevisions;
   published
   end;
 
@@ -531,7 +529,7 @@ begin
     if HttpGetText(URL + '?' + Params, Response) then
     begin
       gOAuth2.DebugLine(Response.Text);
-      Self.Clear(false); // remove all records
+      Self.Clear(False); // remove all records
 
       P := TJSONParser.Create(Response.Text);
       try
@@ -598,7 +596,7 @@ end;
 
 
 
-function TGoogleDrive.GetFileVersions(fileid:string):TGFileRevisions;
+function TGoogleDrive.GetFileVersions(fileid: string): TGFileRevisions;
 var
   Response: TStringList;
   URL: string;
@@ -606,7 +604,7 @@ var
   P: TJSONParser;
   I: integer;
   J, D, E: TJSONData;
-  F:TGFileRevisions;
+  F: TGFileRevisions;
 begin
   (*
   {
@@ -641,7 +639,7 @@ begin
   "fileSize": long
 }
   *)
-  SetLength(F,0);
+  SetLength(F, 0);
 
   Response := TStringList.Create;
   try
@@ -651,7 +649,7 @@ begin
 
     // https://developers.google.com/drive/v2/reference/files/list
     gOAuth2.LogLine('Retrieving revisions of the current file ' + gOAuth2.EMail);
-    URL := 'https://www.googleapis.com/drive/v2/files/'+fileid+'/revisions';
+    URL := 'https://www.googleapis.com/drive/v2/files/' + fileid + '/revisions';
     Params := 'access_token=' + gOAuth2.Access_token;
     if HttpGetText(URL + '?' + Params, Response) then
     begin
@@ -678,22 +676,21 @@ begin
           gOAuth2.DebugLine(format('%d revisions currently available', [D.Count]));
           for I := 0 to D.Count - 1 do
           begin
-            SetLength(F,length(F)+1);
+            SetLength(F, length(F) + 1);
 
-            with F[length(F)-1] do begin;
-
-            fileid := RetrieveJSONValue(D.Items[I], 'id');
-            modifiedDate := RetrieveJSONValue(D.Items[I], 'modifiedDate');
-            mimetype := RetrieveJSONValue(D.Items[I], 'mimeType');
-
-            Application.ProcessMessages;
+            with F[length(F) - 1] do
+            begin
+              fileid := RetrieveJSONValue(D.Items[I], 'id');
+              modifiedDate := RetrieveJSONValue(D.Items[I], 'modifiedDate');
+              mimetype := RetrieveJSONValue(D.Items[I], 'mimeType');
+              Application.ProcessMessages;
             end;
           end;
 
-        gOAuth2.LogLine('Done');
+          gOAuth2.LogLine('Done');
 
         end;
-        result:=F;
+        Result := F;
       finally
         if assigned(J) then
           J.Free;
