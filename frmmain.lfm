@@ -639,7 +639,9 @@ object Mainform: TMainform
         Align = alLeft
         DefaultItemHeight = 18
         ExpandSignSize = 16
+        RowSelect = True
         TabOrder = 0
+        Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoRowSelect, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
         Items.Data = {
           F9FFFFFF020002000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF020000000000
           0000010A0000004F6E6465726465656C30FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
@@ -684,6 +686,8 @@ object Mainform: TMainform
           6C320A0000004F6E6465726465656C330A0000004F6E6465726465656C34FFFF
           FFFFFFFFFFFFFFFFFFFFFFFFFFFF
         }
+        MultiSelect = True
+        RowSelect = True
         TabOrder = 1
         ViewStyle = vsReport
       end

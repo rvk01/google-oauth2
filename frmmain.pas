@@ -888,9 +888,11 @@ procedure TMainform.Button1Click(Sender: TObject);
 var
   Q: integer;
   nwWidth: integer;
+  TreeNode: TTreeNode;
   ListItem: TListItem;
   Img: TImage;
   IconLink: string;
+  ImgLinkList: TStringList;
 begin
 
   JDrive.gOAuth2.LogMemo := Memo1;
@@ -910,6 +912,18 @@ begin
 
   Jdrive.Open;
   Jdrive.Populate();
+  TreeView1.Images := ImageList1;
+
+  // ListView1.ViewStyle:=vsIcon;
+  ListView1.MultiSelect:=true;
+
+  ListView1.LargeImages := nil;
+  ListView1.SmallImages := nil;
+  ImageList1.Clear;
+  ListView1.LargeImages := ImageList1;
+  ListView1.SmallImages := ImageList1;
+
+  ImgLinkList := TStringList.Create;
 
   AddToLog('Busy filling grid');
   try
@@ -920,9 +934,27 @@ begin
       begin
         if TreeView1.Items.Count = 0 then
         begin
-          Treeview1.Items.Add(nil,'Google Drive');
+          Treeview1.Items.Add(nil, 'Google Drive');
         end;
-        Treeview1.Items.AddChild(Treeview1.Items.GetFirstNode, Jdrive.FieldByName('title').AsString);
+        TreeNode := Treeview1.Items.AddChild(Treeview1.Items.GetFirstNode, Jdrive.FieldByName('title').AsString);
+
+        IconLink := Jdrive.FieldByName('iconLink').AsString;
+        if IconLink <> '' then
+        begin
+          TreeNode.ImageIndex := ImgLinkList.IndexOf(IconLink);
+          if TreeNode.ImageIndex = -1 then
+          begin
+            Img := TImage.Create(nil);
+            try
+              LoadImageFromWeb(Img, IconLink);
+              TreeNode.ImageIndex := ImageList1.Add(Img.Picture.Bitmap, nil);
+              ImgLinkList.Add(IconLink);
+            finally
+              Img.Free;
+            end;
+          end;
+        end;
+
       end
       else
       begin
@@ -932,20 +964,23 @@ begin
         Load icon 90x90 to a stringlist
         Convert them to 16x16
         and load from internet in a thread
-
+        *)
         IconLink := Jdrive.FieldByName('iconLink').AsString;
         if IconLink <> '' then
         begin
-          Img := TImage.Create(nil);
-          try
-            LoadImageFromWeb(Img, IconLink);
-            // ShowMessage(Img.Width.ToString + 'x'+ Img.Height.ToString);
-            // ListItem.ImageIndex := ImageList1.AddIcon(IUm);
-          finally
-            Img.Free;
+          ListItem.ImageIndex := ImgLinkList.IndexOf(IconLink);
+          if ListItem.ImageIndex = -1 then
+          begin
+            Img := TImage.Create(nil);
+            try
+              LoadImageFromWeb(Img, IconLink);
+              ListItem.ImageIndex := ImageList1.Add(Img.Picture.Bitmap, nil);
+              ImgLinkList.Add(IconLink);
+            finally
+              Img.Free;
+            end;
           end;
         end;
-        *)
 
         ListItem.Caption := Jdrive.FieldByName('title').AsString;
         ListItem.SubItems.Add(Jdrive.FieldByName('modified').AsString);
@@ -961,6 +996,7 @@ begin
     TreeView1.FullExpand;
 
   finally
+    ImgLinkList.Free;
   end;
 
 end;
