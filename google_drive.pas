@@ -10,6 +10,16 @@ uses
   Classes, SysUtils, DB, Forms, google_oauth2, fpjson, jsonparser, memds,
   httpsend, blcksock, typinfo, ComCtrls, synautil, StdCtrls;
 
+
+
+type TGFileRevision = packed record
+fileid:string;
+modifiedDate:string;
+mimetype:string;
+end;
+
+type TGFileRevisions = array of TGfileRevision;
+
 type
   TGoogleDrive = class(TMemDataSet)
   private
@@ -44,7 +54,7 @@ type
     property LogMemo: TMemo read FLogMemo write FLogMemo;
     property DebugMemo: TMemo read FDebugMemo write FDebugMemo;
     procedure CreateFolder(foldername: string; parentid: string = '');
-
+    function GetFileVersions(fileid:string):TGFileRevisions;
   published
   end;
 
@@ -584,6 +594,121 @@ begin
   end;
 
 end;
+
+
+
+
+function TGoogleDrive.GetFileVersions(fileid:string):TGFileRevisions;
+var
+  Response: TStringList;
+  URL: string;
+  Params: string;
+  P: TJSONParser;
+  I: integer;
+  J, D, E: TJSONData;
+  F:TGFileRevisions;
+begin
+  (*
+  {
+  "kind": "drive#revision",
+  "etag": etag,
+  "id": string,
+  "selfLink": string,
+  "mimeType": string,
+  "modifiedDate": datetime,
+  "pinned": boolean,
+  "published": boolean,
+  "publishedLink": string,
+  "publishAuto": boolean,
+  "publishedOutsideDomain": boolean,
+  "downloadUrl": string,
+  "exportLinks": {
+    (key): string
+  },
+  "lastModifyingUserName": string,
+  "lastModifyingUser": {
+    "kind": "drive#user",
+    "displayName": string,
+    "picture": {
+      "url": string
+    },
+    "isAuthenticatedUser": boolean,
+    "permissionId": string,
+    "emailAddress": string
+  },
+  "originalFilename": string,
+  "md5Checksum": string,
+  "fileSize": long
+}
+  *)
+  SetLength(F,0);
+
+  Response := TStringList.Create;
+  try
+
+    if gOAuth2.EMail = '' then
+      exit;
+
+    // https://developers.google.com/drive/v2/reference/files/list
+    gOAuth2.LogLine('Retrieving revisions of the current file ' + gOAuth2.EMail);
+    URL := 'https://www.googleapis.com/drive/v2/files/'+fileid+'/revisions';
+    Params := 'access_token=' + gOAuth2.Access_token;
+    if HttpGetText(URL + '?' + Params, Response) then
+    begin
+      gOAuth2.DebugLine(Response.Text);
+      P := TJSONParser.Create(Response.Text);
+      try
+        J := P.Parse;
+        if Assigned(J) then
+        begin
+
+          D := J.FindPath('error');
+          if assigned(D) then
+          begin
+            LastErrorCode := RetrieveJSONValue(D, 'code');
+            LastErrorMessage := RetrieveJSONValue(D, 'message');
+            gOAuth2.LogLine(format('Error %s: %s',
+              [LastErrorCode, LastErrorMessage]));
+            exit;
+          end;
+
+          gOAuth2.LogLine('Busy retrieving file revisions');
+
+          D := J.FindPath('items');
+          gOAuth2.DebugLine(format('%d revisions currently available', [D.Count]));
+          for I := 0 to D.Count - 1 do
+          begin
+            SetLength(F,length(F)+1);
+
+            with F[length(F)-1] do begin;
+
+            fileid := RetrieveJSONValue(D.Items[I], 'id');
+            modifiedDate := RetrieveJSONValue(D.Items[I], 'modifiedDate');
+            mimetype := RetrieveJSONValue(D.Items[I], 'mimeType');
+
+            Application.ProcessMessages;
+            end;
+          end;
+
+        gOAuth2.LogLine('Done');
+
+        end;
+        result:=F;
+      finally
+        if assigned(J) then
+          J.Free;
+        P.Free;
+      end;
+
+    end;
+
+  finally
+    Response.Free;
+  end;
+
+end;
+
+
 
 procedure TGoogleDrive.CreateFolder(foldername: string; parentid: string = '');
 var
