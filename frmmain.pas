@@ -251,6 +251,7 @@ procedure TMainform.StringGrid1DblClick(Sender: TObject);
 var
   Filename: string;
   FileId: string;
+  A:TGFileRevisions;
 begin
   if Jdrive.gOAuth2.EMail = '' then exit;
 
@@ -264,7 +265,9 @@ begin
   Filename := Extractfilepath(ParamStr(0)) + Filename;
   // check for valid filename
   try
-    JDrive.DownloadFile(FileId, Filename);
+    // JDrive.DownloadFile(FileId, Filename);
+    A:=JDrive.GetFileVersions(FileId);
+    showmessage(A[0].fileid+#13+A[0].mimetype+#13+A[0].modifieddate);
   except
     ShowMessage('Could not safe ' + Filename);
   end;
