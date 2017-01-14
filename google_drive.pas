@@ -299,7 +299,7 @@ begin
   //FieldDefs.Add('Time', ftTime, 0, False);
   //FieldDefs.Add('Date', ftDate, 0, False);
   //FieldDefs.Add('DateTime', ftDateTime, 0, False);
-  FieldDefs.Add('title', ftString, 25, False);
+  FieldDefs.Add('title', ftString, 255, False);
   FieldDefs.Add('fileId', ftString, 255, False);
   FieldDefs.Add('description', ftString, 255, False);
   FieldDefs.Add('created', ftString, 255, False);
