@@ -1,7 +1,7 @@
 object Mainform: TMainform
-  Left = 251
+  Left = 219
   Height = 564
-  Top = 75
+  Top = 150
   Width = 846
   Caption = 'Google OAuth 2.0 testapp'
   ClientHeight = 564
@@ -246,13 +246,13 @@ object Mainform: TMainform
         end
         object TabSheet9: TTabSheet
           Caption = 'Contacts'
-          ClientHeight = 308
-          ClientWidth = 765
+          ClientHeight = 238
+          ClientWidth = 830
           object PageControl4: TPageControl
             Left = 10
-            Height = 288
+            Height = 218
             Top = 10
-            Width = 745
+            Width = 810
             ActivePage = TabSheet11
             Align = alClient
             BorderSpacing.Around = 10
@@ -273,8 +273,8 @@ object Mainform: TMainform
             end
             object TabSheet11: TTabSheet
               Caption = 'Contacts'
-              ClientHeight = 260
-              ClientWidth = 737
+              ClientHeight = 190
+              ClientWidth = 802
               object btGetContacts: TButton
                 Left = 8
                 Height = 25
@@ -285,9 +285,9 @@ object Mainform: TMainform
               end
               object StringGrid2: TStringGrid
                 Left = 10
-                Height = 202
+                Height = 132
                 Top = 48
-                Width = 717
+                Width = 782
                 Align = alBottom
                 Anchors = [akTop, akLeft, akRight, akBottom]
                 BorderSpacing.Around = 10
@@ -298,13 +298,13 @@ object Mainform: TMainform
         end
         object TabSheet2: TTabSheet
           Caption = 'Calendar'
-          ClientHeight = 153
-          ClientWidth = 829
+          ClientHeight = 238
+          ClientWidth = 830
           object PageControl3: TPageControl
             Left = 10
-            Height = 133
+            Height = 218
             Top = 10
-            Width = 809
+            Width = 810
             ActivePage = TabSheet6
             Align = alClient
             BorderSpacing.Around = 10
@@ -312,8 +312,8 @@ object Mainform: TMainform
             TabOrder = 0
             object TabSheet6: TTabSheet
               Caption = 'New appointment'
-              ClientHeight = 105
-              ClientWidth = 801
+              ClientHeight = 190
+              ClientWidth = 802
               object Button5: TButton
                 Left = 10
                 Height = 88
@@ -481,8 +481,8 @@ object Mainform: TMainform
             TabOrder = 0
             object TabSheet12: TTabSheet
               Caption = 'Upload'
-              ClientHeight = 78
-              ClientWidth = 818
+              ClientHeight = 163
+              ClientWidth = 819
               OnShow = TabSheet12Show
               object btnSimpleUpload: TButton
                 Left = 8
@@ -507,7 +507,7 @@ object Mainform: TMainform
                 Left = 448
                 Height = 23
                 Top = 10
-                Width = 357
+                Width = 358
                 Anchors = [akTop, akLeft, akRight]
                 TabOrder = 2
               end
@@ -521,9 +521,9 @@ object Mainform: TMainform
               end
               object ListBox1: TListBox
                 Left = 8
-                Height = 27
+                Height = 112
                 Top = 48
-                Width = 797
+                Width = 798
                 Anchors = [akTop, akLeft, akRight, akBottom]
                 ItemHeight = 0
                 TabOrder = 3
@@ -589,6 +589,15 @@ object Mainform: TMainform
                 OnClick = ckHideFoldersClick
                 TabOrder = 3
               end
+              object Button2: TButton
+                Left = 288
+                Height = 25
+                Top = 8
+                Width = 67
+                Caption = 'List 2'
+                OnClick = Button2Click
+                TabOrder = 4
+              end
             end
           end
           object ProgressBar1: TProgressBar
@@ -642,7 +651,9 @@ object Mainform: TMainform
         Width = 209
         Align = alLeft
         DefaultItemHeight = 18
+        RowSelect = True
         TabOrder = 0
+        Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoRowSelect, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
       end
       object ListView1: TListView
         Left = 224
@@ -671,6 +682,8 @@ object Mainform: TMainform
             Caption = 'Size'
             Width = 32
           end>
+        MultiSelect = True
+        RowSelect = True
         TabOrder = 1
         ViewStyle = vsReport
       end
@@ -737,7 +750,7 @@ object Mainform: TMainform
     end
   end
   object ImageList1: TImageList
-    left = 200
-    top = 24
+    left = 365
+    top = 205
   end
 end

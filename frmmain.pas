@@ -24,6 +24,7 @@ type
     btnSimpleUpload: TButton;
     btnUploadWithResume: TButton;
     Button1: TButton;
+    Button2: TButton;
     Button5: TButton;
     btGetAppointments: TButton;
     btClearDebug: TButton;
@@ -107,6 +108,7 @@ type
     procedure btnSimpleUploadClick(Sender: TObject);
     procedure btnUploadWithResumeClick(Sender: TObject);
     procedure Button1Click(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
     procedure Button5Click(Sender: TObject);
     procedure ckHideFoldersClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -215,7 +217,7 @@ begin
     CheckGroup1.CheckEnabled[1] := False;
   end;
 
-  PageControl1.ActivePageIndex := 0;
+  // PageControl1.ActivePageIndex := 0;
 
   CheckTokenFile;
 
@@ -251,7 +253,8 @@ procedure TMainform.StringGrid1DblClick(Sender: TObject);
 var
   Filename: string;
   FileId: string;
-  A:TGFileRevisions;
+  A: TGFileRevisions;
+  Rev: Integer;
 begin
   if Jdrive.gOAuth2.EMail = '' then exit;
 
@@ -266,8 +269,14 @@ begin
   // check for valid filename
   try
     // JDrive.DownloadFile(FileId, Filename);
-    A:=JDrive.GetFileVersions(FileId);
-    showmessage(A[0].fileid+#13+A[0].mimetype+#13+A[0].modifieddate);
+    A := JDrive.GetRevisions(FileId);
+    if Length(A) > 0 then
+    begin
+      for Rev := 0 to Length(A) - 1 do
+        Memo1.Lines.Add(A[Rev].fileid + ' - ' + A[Rev].mimetype + ' - ' + A[Rev].modifieddate)
+    end
+    else
+      Memo1.Lines.Add('no revisions');
   except
     ShowMessage('Could not safe ' + Filename);
   end;
@@ -891,9 +900,11 @@ procedure TMainform.Button1Click(Sender: TObject);
 var
   Q: integer;
   nwWidth: integer;
+  TreeNode: TTreeNode;
   ListItem: TListItem;
   Img: TImage;
   IconLink: string;
+  ImgLinkList: TStringList;
 begin
 
   JDrive.gOAuth2.LogMemo := Memo1;
@@ -913,6 +924,18 @@ begin
 
   Jdrive.Open;
   Jdrive.Populate();
+  TreeView1.Images := ImageList1;
+
+  // ListView1.ViewStyle:=vsIcon;
+  ListView1.MultiSelect := True;
+
+  ListView1.LargeImages := nil;
+  ListView1.SmallImages := nil;
+  ImageList1.Clear;
+  ListView1.LargeImages := ImageList1;
+  ListView1.SmallImages := ImageList1;
+
+  ImgLinkList := TStringList.Create;
 
   AddToLog('Busy filling grid');
   try
@@ -923,9 +946,27 @@ begin
       begin
         if TreeView1.Items.Count = 0 then
         begin
-          Treeview1.Items.Add(nil,'Google Drive');
+          Treeview1.Items.Add(nil, 'Google Drive');
         end;
-        Treeview1.Items.AddChild(Treeview1.Items.GetFirstNode, Jdrive.FieldByName('title').AsString);
+        TreeNode := Treeview1.Items.AddChild(Treeview1.Items.GetFirstNode, Jdrive.FieldByName('title').AsString);
+
+        IconLink := Jdrive.FieldByName('iconLink').AsString;
+        if IconLink <> '' then
+        begin
+          TreeNode.ImageIndex := ImgLinkList.IndexOf(IconLink);
+          if TreeNode.ImageIndex = -1 then
+          begin
+            Img := TImage.Create(nil);
+            try
+              LoadImageFromWeb(Img, IconLink);
+              TreeNode.ImageIndex := ImageList1.Add(Img.Picture.Bitmap, nil);
+              ImgLinkList.Add(IconLink);
+            finally
+              Img.Free;
+            end;
+          end;
+        end;
+
       end
       else
       begin
@@ -935,20 +976,23 @@ begin
         Load icon 90x90 to a stringlist
         Convert them to 16x16
         and load from internet in a thread
-
+        *)
         IconLink := Jdrive.FieldByName('iconLink').AsString;
         if IconLink <> '' then
         begin
-          Img := TImage.Create(nil);
-          try
-            LoadImageFromWeb(Img, IconLink);
-            // ShowMessage(Img.Width.ToString + 'x'+ Img.Height.ToString);
-            // ListItem.ImageIndex := ImageList1.AddIcon(IUm);
-          finally
-            Img.Free;
+          ListItem.ImageIndex := ImgLinkList.IndexOf(IconLink);
+          if ListItem.ImageIndex = -1 then
+          begin
+            Img := TImage.Create(nil);
+            try
+              LoadImageFromWeb(Img, IconLink);
+              ListItem.ImageIndex := ImageList1.Add(Img.Picture.Bitmap, nil);
+              ImgLinkList.Add(IconLink);
+            finally
+              Img.Free;
+            end;
           end;
         end;
-        *)
 
         ListItem.Caption := Jdrive.FieldByName('title').AsString;
         ListItem.SubItems.Add(Jdrive.FieldByName('modified').AsString);
@@ -964,7 +1008,66 @@ begin
     TreeView1.FullExpand;
 
   finally
+    ImgLinkList.Free;
   end;
+
+end;
+
+procedure TMainform.Button2Click(Sender: TObject);
+var files:TGfiles;
+var i:integer;
+begin
+      StringGrid3.Options := StringGrid3.Options + [goRowSelect];
+    StringGrid3.ColCount := 9;
+
+    StringGrid3.RowCount := 2;
+    StringGrid3.Cells[1, 0] := 'Title';
+    StringGrid3.Cells[2, 0] := 'Created';
+    StringGrid3.Cells[3, 0] := 'Modified';
+    StringGrid3.Cells[4, 0] := 'Filename';
+    StringGrid3.Cells[5, 0] := 'Size';
+    StringGrid3.Cells[6, 0] := 'FileId';
+    StringGrid3.Cells[7, 0] := 'MimeType';
+    StringGrid3.Cells[8, 0] := 'RevisionId';
+
+    StringGrid3.AutoFillColumns := False;
+
+  JDrive.gOAuth2.LogMemo := Memo1;
+  Jdrive.gOAuth2.DebugMemo := Memo2;
+  Jdrive.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
+  Jdrive.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
+  Jdrive.gOAuth2.GetAccess([goDrive], True);
+  CheckTokenFile;
+
+
+  if Jdrive.gOAuth2.EMail = '' then
+  exit;
+  JDrive.open;
+  JDrive.ListFiles(files,true);
+    for i:=0 to length(files)-1 do begin
+
+      if not ckHideFolders.Checked or not files[i].isFolder then
+          begin
+            with StringGrid3 do
+            begin
+              Mainform.Memo1.lines.add('Processing ...'+inttostr(i+1));
+              Cells[1, StringGrid3.RowCount - 1] := files[i].title;
+              Cells[2, StringGrid3.RowCount - 1] := files[i].createdDate;
+              Cells[3, StringGrid3.RowCount - 1] := files[i].modifiedDate;
+              Cells[4, StringGrid3.RowCount - 1] := files[i].originalFilename;
+              Cells[5, StringGrid3.RowCount - 1] := files[i].fileSize;
+              Cells[6, StringGrid3.RowCount - 1] := files[i].fileid;
+              Cells[7, StringGrid3.RowCount - 1] := files[i].mimeType;
+              if  files[i].mimeType = 'application/vnd.google-apps.folder' then
+                Cells[7, StringGrid3.RowCount - 1] := '<dir>';
+              if Length(files[i].revisions)>0 then Cells[8, StringGrid3.RowCount - 1] := files[i].Revisions[0].fileid;
+            end;
+
+            StringGrid3.RowCount := StringGrid3.RowCount + 1;
+
+          end;
+
+    end;
 
 end;
 
