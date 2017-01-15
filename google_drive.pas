@@ -33,6 +33,7 @@ type TGFile = packed record
     iconLink:string;
     isFolder:boolean;
     revisions:TGFilerevisions;
+    headRevisionId:string;
 end;
 
   type TGFiles = array of TGfile;
@@ -66,7 +67,7 @@ type
     procedure Populate(aFilter: string = '');
     function DownloadFile(id, TargetFile: string): boolean;
     function GetUploadURI(const URL, auth, FileN, Description: string;
-      const Data: TStream): string;
+      const Data: TStream;parameters:string='';fileid:string=''): string;
     property gOAuth2: TGoogleOAuth2 read FgOAuth2 write FgOAuth2;
     function UploadResumableFile(const URL: string; const Data: TStream): string;
     property Progress: TProgressBar read Fprogress write Fprogress;
@@ -194,13 +195,21 @@ end;
 
 
 function TGoogleDrive.GetUploadURI(const URL, auth, FileN, Description: string;
-  const Data: TStream): string;
+  const Data: TStream;parameters:string='';fileid:string=''): string;
 var
   HTTP: THTTPSend;
+  Method,URLM:string;
   s: string;
   i: integer;
 begin
   Result := '';
+  Method:='POST';
+  if fileid<>'' then
+  begin
+    Method:='PATCH';
+    URLM:=URL+'/'+fileid;
+  end;
+
   HTTP := THTTPSend.Create;
   try
     s := Format('{' + CRLF + '"name": "%s",' + CRLF + '"description": "%s"' +
@@ -209,8 +218,14 @@ begin
     HTTP.Headers.Add('Authorization: Bearer ' + auth);
     HTTP.Headers.Add(Format('X-Upload-Content-Length: %d', [Data.Size]));
     HTTP.MimeType := 'application/json; charset=UTF-8';
-    if not HTTP.HTTPMethod('POST', URL) then exit;
+
+    if not HTTP.HTTPMethod(Method, URLM+'?'+parameters) then
+    begin
+      LogMemo.Lines.Add('Error');
+      exit;
+    end;
     Result := HTTP.ResultString; // for any errors
+
     for i := 0 to HTTP.Headers.Count - 1 do
     begin
       if Pos('Location: ', HTTP.Headers.Strings[i]) > 0 then
@@ -680,7 +695,7 @@ begin
                 mimeType := RetrieveJSONValue(D.Items[I], 'mimeType');
                 iconLink := RetrieveJSONValue(D.Items[I], 'iconLink');
                 isFolder := mimeType = 'application/vnd.google-apps.folder';
-
+                headRevisionId := RetrieveJSONValue(D.Items[I], 'headRevisionId');
               if listrevisions and not isFolder then revisions:=GetRevisions(fileid);
 
             Application.ProcessMessages;

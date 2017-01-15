@@ -1198,7 +1198,8 @@ end;
 
 procedure TMainform.btnUploadWithResumeClick(Sender: TObject);
 const
-  BaseURL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
+  BaseURL = 'https://www.googleapis.com/upload/drive/v3/files';
+  Param = 'uploadType=resumable';
   Pendingfile = 'Pendingupload.json';
   function GetNewUploadFile: TPendingUpload;
   var
@@ -1228,7 +1229,8 @@ const
     Data := TFileStream.Create(UploadFilename, fmOpenRead);
     try
       UploadURL := JDrive.GetUploadURI(BaseURL, JDrive.gOAuth2.Access_token,
-        Result.filename, Result.Description, Data);
+        Result.filename, Result.Description, Data,Param,'');
+      showmessage(UploadURL);
       if pos('upload_id', UploadURL) > 0 then
       begin
         Result.url := UploadURL;
@@ -1331,7 +1333,7 @@ begin
           Memo1.Lines.add(Current.filename + ' md5 mismatch');
           // need to reupload
           qURL := JDrive.GetUploadURI(BaseURL, JDrive.gOAuth2.Access_token,
-            Current.Filename, Current.Description, Data);
+            Current.Filename, Current.Description, Data,Param);
           if pos('upload_id', qURL) > 0 then
           begin
             Current.url := qURL;
