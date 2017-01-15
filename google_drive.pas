@@ -11,7 +11,8 @@ uses
   httpsend, blcksock, typinfo, ComCtrls, synautil, StdCtrls;
 
 type TGFileRevision = packed record
-    fileid: string;
+    id:string;
+    revisionid: string;
     modifiedDate: string;
     mimetype: string;
   end;
@@ -73,9 +74,14 @@ type
     property LogMemo: TMemo read FLogMemo write FLogMemo;
     property DebugMemo: TMemo read FDebugMemo write FDebugMemo;
     procedure CreateFolder(foldername: string; parentid: string = '');
-    function GetRevisions(fileid: string): TGFileRevisions;
 
+    function GetRevisions(fileid: string): TGFileRevisions;
     procedure GetGFileRevisions(var A:TGFile);
+
+    Function DeleteRevisionFile(fileid,revisionid:string):boolean;
+    Function DeleteGFileRevision(var A:TGFileRevision):boolean;
+    Function DeleteAllGFileRevisions(var A:TGFileRevisions):boolean;
+
     procedure ListFiles(var A:TGFiles;listrevisions:boolean=false);
   published
   end;
@@ -720,6 +726,46 @@ begin
 end;
 
 
+Function TGoogleDrive.DeleteAllGFileRevisions(var A:TGFileRevisions):boolean;
+var i:integer;
+begin
+result:=false;
+for i:=0 to length(A)-1 do if not (A[i].revisionid='') then DeleteRevisionFile(A[i].id,A[i].revisionid);
+result:=true;
+end;
+
+
+Function TGoogleDrive.DeleteGFileRevision(var A:TGFileRevision):boolean;
+begin
+result:=false;
+if A.revisionid='' then exit;
+DeleteRevisionFile(A.id,A.revisionid);
+end;
+
+Function TGoogleDrive.DeleteRevisionFile(fileid,revisionid:string):boolean;
+//DELETE https://www.googleapis.com/drive/v2/files/fileId/revisions/revisionId
+var
+  HTTP: THTTPSend;
+begin
+  result:=false;
+  HTTP := THTTPSend.Create;
+  try
+    if gOAuth2.EMail = '' then
+    begin
+      logmemo.Lines.add('Not connected');
+      exit;
+    end;
+    HTTP.Headers.Add('Authorization: Bearer ' + gOAuth2.Access_token);
+    if not HTTP.HTTPMethod('DELETE', 'https://www.googleapis.com/drive/v2/files/'+fileId+'/revisions/'+revisionId) then exit;
+    if HTTP.ResultString='' then result:=true;
+    logmemo.Lines.add(HTTP.Headers.Text + #13 + HTTP.ResultString);
+  finally
+    HTTP.Free;
+  end;
+
+
+end;
+
 
 procedure TGoogleDrive.GetGFileRevisions(var A:TGFile);
 begin
@@ -811,7 +857,8 @@ begin
 
             with F[length(F) - 1] do
             begin
-              fileid := RetrieveJSONValue(D.Items[I], 'id');
+              id:=fileid;
+              revisionid := RetrieveJSONValue(D.Items[I], 'id');
               modifiedDate := RetrieveJSONValue(D.Items[I], 'modifiedDate');
               mimetype := RetrieveJSONValue(D.Items[I], 'mimeType');
               Application.ProcessMessages;

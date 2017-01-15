@@ -25,6 +25,8 @@ type
     btnUploadWithResume: TButton;
     Button1: TButton;
     Button2: TButton;
+    Button3: TButton;
+    Button4: TButton;
     Button5: TButton;
     btGetAppointments: TButton;
     btClearDebug: TButton;
@@ -64,6 +66,7 @@ type
     ProgressBar2: TProgressBar;
     Splitter1: TSplitter;
     StatusBar1: TStatusBar;
+    StringGrid4: TStringGrid;
     Summary: TLabel;
     ListBox1: TListBox;
     Memo1: TMemo;
@@ -89,6 +92,7 @@ type
     TabSheet13: TTabSheet;
     TabSheet14: TTabSheet;
     TabSheet15: TTabSheet;
+    TabSheet16: TTabSheet;
     TabSheet2: TTabSheet;
     TabSheet3: TTabSheet;
     TabSheet4: TTabSheet;
@@ -109,12 +113,16 @@ type
     procedure btnUploadWithResumeClick(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure Button4Click(Sender: TObject);
     procedure Button5Click(Sender: TObject);
     procedure ckHideFoldersClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure StringGrid1DblClick(Sender: TObject);
+    procedure StringGrid3KeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
     procedure TabSheet12Show(Sender: TObject);
   private
     { private declarations }
@@ -129,6 +137,7 @@ type
     procedure DeleteJSONPath(filename, param: string);
     // function Download_Gdrive_File(id,auth, target: string): Boolean;
     procedure FillDriveGrid;
+    procedure UploadWithResume(fileid:string='');
   end;
 
 var
@@ -258,6 +267,20 @@ var
 begin
   if Jdrive.gOAuth2.EMail = '' then exit;
 
+    StringGrid4.Options := StringGrid4.Options + [goRowSelect];
+    Stringgrid4.colcount:=9;
+    Stringgrid4.rowcount:=1;
+    StringGrid4.Cells[1, 0] := 'Title';
+    StringGrid4.Cells[2, 0] := 'Created';
+    StringGrid4.Cells[3, 0] := 'Modified';
+    StringGrid4.Cells[4, 0] := 'Filename';
+    StringGrid4.Cells[5, 0] := 'Size';
+    StringGrid4.Cells[6, 0] := 'FileId';
+    StringGrid4.Cells[7, 0] := 'MimeType';
+    StringGrid4.Cells[8, 0] := 'RevisionId';
+
+
+
   with TStringGrid(Sender) do
   begin
     FileId := cells[6, Row];
@@ -270,15 +293,37 @@ begin
   try
     // JDrive.DownloadFile(FileId, Filename);
     A := JDrive.GetRevisions(FileId);
+    stringgrid4.rowcount:=Length(A)+1;
+    Memo1.lines.add(inttostr(length(A))+' revisions found');
     if Length(A) > 0 then
-    begin
       for Rev := 0 to Length(A) - 1 do
-        Memo1.Lines.Add(A[Rev].fileid + ' - ' + A[Rev].mimetype + ' - ' + A[Rev].modifieddate)
+      begin;
+      StringGrid4.Cells[8, Rev+1] := A[Rev].revisionid;
+      StringGrid4.Cells[6, Rev+1] := A[Rev].id;
+      StringGrid4.Cells[7, Rev+1] := A[Rev].mimetype;
+      StringGrid4.Cells[3, Rev+1] := A[Rev].modifieddate;
+      Memo1.Lines.Add(A[Rev].revisionid + ' - ' + A[Rev].mimetype + ' - ' + A[Rev].modifieddate)
     end
     else
       Memo1.Lines.Add('no revisions');
   except
-    ShowMessage('Could not safe ' + Filename);
+    ShowMessage('Could not save ' + Filename);
+  end;
+end;
+
+procedure TMainform.StringGrid3KeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+var fileid,revisionid:string;
+begin
+
+  if Jdrive.gOAuth2.EMail = '' then exit;
+
+  if key=VK_DELETE then
+  with TStringGrid(Sender) do
+  begin
+    FileId := cells[6, Row];
+    Revisionid := cells[8, Row];
+
   end;
 end;
 
@@ -1060,7 +1105,7 @@ begin
               Cells[7, StringGrid3.RowCount - 1] := files[i].mimeType;
               if  files[i].mimeType = 'application/vnd.google-apps.folder' then
                 Cells[7, StringGrid3.RowCount - 1] := '<dir>';
-              if Length(files[i].revisions)>0 then Cells[8, StringGrid3.RowCount - 1] := files[i].Revisions[0].fileid;
+              if Length(files[i].revisions)>0 then Cells[8, StringGrid3.RowCount - 1] := files[i].Revisions[0].revisionid;
             end;
 
             StringGrid3.RowCount := StringGrid3.RowCount + 1;
@@ -1070,6 +1115,28 @@ begin
     end;
 
 end;
+
+procedure TMainform.Button3Click(Sender: TObject);
+var x:integer;
+var fileid,revisionid:string;
+begin
+if stringgrid4.RowCount=2 then
+begin
+showmessage('No revision found, you may delete the file');
+exit;
+end;
+
+x:=Stringgrid4.Selection.Top;
+
+fileid:=StringGrid4.Cells[6, x];
+revisionid:=StringGrid4.Cells[8, x];
+
+if QuestionDlg('Question', 'You''re about to delete a revision of the current file, continue anyway ?',
+mtCustom, [1, 'Ok', 2, 'No thanks'], '')=2 then exit;
+
+JDrive.DeleteRevisionFile(fileid,revisionid);
+end;
+
 
 procedure TMainform.btClearDebugClick(Sender: TObject);
 begin
@@ -1196,7 +1263,9 @@ begin
   end;
 end;
 
-procedure TMainform.btnUploadWithResumeClick(Sender: TObject);
+
+
+procedure TMainform.UploadWithResume(fileid:string='');
 const
   BaseURL = 'https://www.googleapis.com/upload/drive/v3/files';
   Param = 'uploadType=resumable';
@@ -1229,7 +1298,7 @@ const
     Data := TFileStream.Create(UploadFilename, fmOpenRead);
     try
       UploadURL := JDrive.GetUploadURI(BaseURL, JDrive.gOAuth2.Access_token,
-        Result.filename, Result.Description, Data,Param,'');
+        Result.filename, Result.Description, Data,Param,fileid);
       showmessage(UploadURL);
       if pos('upload_id', UploadURL) > 0 then
       begin
@@ -1333,7 +1402,7 @@ begin
           Memo1.Lines.add(Current.filename + ' md5 mismatch');
           // need to reupload
           qURL := JDrive.GetUploadURI(BaseURL, JDrive.gOAuth2.Access_token,
-            Current.Filename, Current.Description, Data,Param);
+            Current.Filename, Current.Description, Data,Param,fileid);
           if pos('upload_id', qURL) > 0 then
           begin
             Current.url := qURL;
@@ -1370,6 +1439,23 @@ begin
     Listbox1.Clear;
   end;
 
+end;
+
+
+
+procedure TMainform.btnUploadWithResumeClick(Sender: TObject);
+begin
+Uploadwithresume;
+end;
+
+procedure TMainform.Button4Click(Sender: TObject);
+var x:integer;
+var fileid:string;
+begin
+x:=Stringgrid4.Selection.Top;
+fileid:=stringgrid4.Cells[6,x];
+if fileid='' then exit;
+uploadwithresume(fileid);
 end;
 
 procedure TMainform.TabSheet12Show(Sender: TObject);
