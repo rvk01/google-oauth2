@@ -10,7 +10,7 @@ object Mainform: TMainform
   OnDestroy = FormDestroy
   OnShow = FormShow
   Position = poScreenCenter
-  LCLVersion = '1.6.0.4'
+  LCLVersion = '1.7'
   object PageControl6: TPageControl
     Left = 0
     Height = 564
@@ -345,8 +345,6 @@ object Mainform: TMainform
                 Top = 110
                 Width = 260
                 CalendarDisplaySettings = [dsShowHeadings, dsShowDayNames]
-                OKCaption = 'OK'
-                CancelCaption = 'Cancel'
                 DateOrder = doNone
                 ButtonWidth = 23
                 NumGlyphs = 1
@@ -360,8 +358,6 @@ object Mainform: TMainform
                 Top = 142
                 Width = 260
                 CalendarDisplaySettings = [dsShowHeadings, dsShowDayNames]
-                OKCaption = 'OK'
-                CancelCaption = 'Cancel'
                 DateOrder = doNone
                 ButtonWidth = 23
                 NumGlyphs = 1
@@ -651,9 +647,20 @@ object Mainform: TMainform
         Width = 209
         Align = alLeft
         DefaultItemHeight = 18
+        ExpandSignSize = 16
         RowSelect = True
         TabOrder = 0
         Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoRowSelect, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
+        Items.Data = {
+          F9FFFFFF020002000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF020000000000
+          0000010A0000004F6E6465726465656C30FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+          FF0200000000000000010A0000004F6E6465726465656C31FFFFFFFFFFFFFFFF
+          FFFFFFFFFFFFFFFF0000000000000000000A0000004F6E6465726465656C32FF
+          FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000000000000000000A0000004F6E6465
+          726465656C33FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000000000000000000A
+          0000004F6E6465726465656C34FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000
+          0000000000000A0000004F6E6465726465656C35
+        }
       end
       object ListView1: TListView
         Left = 224
@@ -665,23 +672,29 @@ object Mainform: TMainform
           item
             AutoSize = True
             Caption = 'Name'
-            Width = 610
+            Width = 69
           end        
           item
             AutoSize = True
             Caption = 'Date modified'
-            Width = 87
+            Width = 73
           end        
           item
             AutoSize = True
             Caption = 'Type'
-            Width = 38
+            Width = 73
           end        
           item
             AutoSize = True
             Caption = 'Size'
-            Width = 32
+            Width = 73
           end>
+        Items.LazData = {
+          6E00000001000000FFFFFFFFFFFFFFFFFFFFFFFF040000000A0000004F6E6465
+          726465656C300A0000004F6E6465726465656C310A0000004F6E646572646565
+          6C320A0000004F6E6465726465656C330A0000004F6E6465726465656C34FFFF
+          FFFFFFFFFFFFFFFFFFFFFFFFFFFF
+        }
         MultiSelect = True
         RowSelect = True
         TabOrder = 1
@@ -750,7 +763,7 @@ object Mainform: TMainform
     end
   end
   object ImageList1: TImageList
-    left = 365
-    top = 205
+    Left = 365
+    Top = 205
   end
 end

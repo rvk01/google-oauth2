@@ -18,7 +18,6 @@ type TGFileRevision = packed record
 
 type TGFileRevisions = array of TGfileRevision;
 
-
 type TGFile = packed record
     title:string;
     fileid:string;
@@ -36,7 +35,7 @@ type TGFile = packed record
     headRevisionId:string;
 end;
 
-  type TGFiles = array of TGfile;
+type TGFiles = array of TGfile;
 
 type
   TGoogleDrive = class(TMemDataSet)
