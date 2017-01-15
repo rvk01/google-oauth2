@@ -1,7 +1,7 @@
 object Mainform: TMainform
-  Left = 251
+  Left = 219
   Height = 564
-  Top = 75
+  Top = 150
   Width = 846
   Caption = 'Google OAuth 2.0 testapp'
   ClientHeight = 564
@@ -246,13 +246,13 @@ object Mainform: TMainform
         end
         object TabSheet9: TTabSheet
           Caption = 'Contacts'
-          ClientHeight = 308
-          ClientWidth = 765
+          ClientHeight = 238
+          ClientWidth = 830
           object PageControl4: TPageControl
             Left = 10
-            Height = 288
+            Height = 218
             Top = 10
-            Width = 745
+            Width = 810
             ActivePage = TabSheet11
             Align = alClient
             BorderSpacing.Around = 10
@@ -273,8 +273,8 @@ object Mainform: TMainform
             end
             object TabSheet11: TTabSheet
               Caption = 'Contacts'
-              ClientHeight = 260
-              ClientWidth = 737
+              ClientHeight = 190
+              ClientWidth = 802
               object btGetContacts: TButton
                 Left = 8
                 Height = 25
@@ -285,9 +285,9 @@ object Mainform: TMainform
               end
               object StringGrid2: TStringGrid
                 Left = 10
-                Height = 202
+                Height = 132
                 Top = 48
-                Width = 717
+                Width = 782
                 Align = alBottom
                 Anchors = [akTop, akLeft, akRight, akBottom]
                 BorderSpacing.Around = 10
@@ -477,8 +477,8 @@ object Mainform: TMainform
             TabOrder = 0
             object TabSheet12: TTabSheet
               Caption = 'Upload'
-              ClientHeight = 78
-              ClientWidth = 818
+              ClientHeight = 163
+              ClientWidth = 819
               OnShow = TabSheet12Show
               object btnSimpleUpload: TButton
                 Left = 8
@@ -503,7 +503,7 @@ object Mainform: TMainform
                 Left = 448
                 Height = 23
                 Top = 10
-                Width = 357
+                Width = 358
                 Anchors = [akTop, akLeft, akRight]
                 TabOrder = 2
               end
@@ -517,9 +517,9 @@ object Mainform: TMainform
               end
               object ListBox1: TListBox
                 Left = 8
-                Height = 27
+                Height = 112
                 Top = 48
-                Width = 797
+                Width = 798
                 Anchors = [akTop, akLeft, akRight, akBottom]
                 ItemHeight = 0
                 TabOrder = 3
@@ -584,6 +584,15 @@ object Mainform: TMainform
                 Caption = 'Hide Folders'
                 OnClick = ckHideFoldersClick
                 TabOrder = 3
+              end
+              object Button2: TButton
+                Left = 288
+                Height = 25
+                Top = 8
+                Width = 67
+                Caption = 'List 2'
+                OnClick = Button2Click
+                TabOrder = 4
               end
             end
           end
