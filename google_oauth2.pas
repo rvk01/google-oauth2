@@ -140,10 +140,11 @@ uses
   comobj, // for ceating Browser-object
   ActiveX, // CoInitialize
   Variants,
+  {$IFDEF USE_SUPEROBJECT} superobject, {$ELSE} fpjson, jsonparser, {$ENDIF}
   Dialogs, // for inputbox
-  Forms, // for Screen.Width/Height
+  Forms // for Screen.Width/Height
   // base64, // for the XOAuth2 token, we use synapse now
-{$IFDEF USE_SUPEROBJECT} superobject {$ELSE} fpjson, jsonparser {$ENDIF};
+  ;
 
 const
   token_filename = 'tokens.dat';
@@ -153,8 +154,8 @@ const
 
 {$IFNDEF FPC}
 
-  // we re-declare this one with string so Delphi doesn't give hints about string-conversion
-function EncodeURLElement(const Value: String): String;
+// we re-declare this one with string so Delphi doesn't give hints about string-conversion
+function EncodeURLElement(const Value: string): string;
 begin
   Result := string(EncodeTriplet(ansistring(Value), '%', URLSpecialChar + URLFullSpecialChar));
 end;
@@ -163,7 +164,7 @@ end;
 {$IFDEF USE_SUPEROBJECT}
 
 
-function RetrieveJSONValue(JSonString, Key: string; FromArray: String = ''; Index: Integer = 0): string;
+function RetrieveJSONValue(JSonString, Key: string; FromArray: string = ''; Index: integer = 0): string;
 var
   obj: ISuperObject;
 begin
@@ -178,18 +179,18 @@ begin
   begin
     if obj.AsObject.Exists(FromArray) then
       if obj.A[FromArray].O[Index].AsObject.Exists(Key) then
-          Result := obj.A[FromArray].O[Index].S[Key];
+        Result := obj.A[FromArray].O[Index].S[Key];
   end;
   Result := AnsiDequotedStr(Result, '"');
 end;
 {$ELSE}
 
 
-function RetrieveJSONValue(JSonString, Key: string; FromArray: String = ''; Index: Integer = 0): string;
+function RetrieveJSONValue(JSonString, Key: string; FromArray: string = ''; Index: integer = 0): string;
 var
   P: TJSONParser;
   J, D, L: TJSONData;
-  Key1, Key2: String;
+  Key1, Key2: string;
 begin
   Result := '';
   Key1 := Key;
@@ -209,10 +210,10 @@ begin
         D := J.FindPath(FromArray);
         if Assigned(D) and (D.Count > 0) then
         begin
-            D := D.Items[Index];
-            L := D.FindPath(Key1);
-            if assigned(L) then
-              Result := L.AsString;
+          D := D.Items[Index];
+          L := D.FindPath(Key1);
+          if assigned(L) then
+            Result := L.AsString;
         end;
       end
       else
@@ -231,7 +232,7 @@ begin
         begin
           D := J.FindPath(Key1);
           if Assigned(D) then
-              Result := D.AsString;
+            Result := D.AsString;
         end;
       end;
     end;
@@ -278,14 +279,14 @@ end;
 procedure TGoogleOAuth2.LogLine(Value: string);
 begin
   if LogMemo <> nil then
-      LogMemo.Lines.Add(Value);
+    LogMemo.Lines.Add(Value);
   DebugLine(Value);
 end;
 
 procedure TGoogleOAuth2.DebugLine(Value: string);
 begin
   if DebugMemo <> nil then
-      DebugMemo.Lines.Add(Value);
+    DebugMemo.Lines.Add(Value);
 end;
 
 procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boolean = False);
@@ -295,7 +296,7 @@ procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boo
     URL: string;
     Params: string;
     Response: TStringList;
-    JSonStr: String;
+    JSonStr: string;
   begin
     URL := 'https://www.googleapis.com/plus/v1/people/me';
     Params := 'access_token=' + Access_token;
@@ -307,7 +308,7 @@ procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boo
         LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
         LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
         if LastErrorCode <> '' then
-            LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+          LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
 
         Fullname := RetrieveJSONValue(JSonStr, 'displayName');
         EMail := RetrieveJSONValue(JSonStr, 'value', 'emails', 0);
@@ -315,7 +316,7 @@ procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boo
       end;
 
     finally
-        Response.Free;
+      Response.Free;
     end;
   end;
 
@@ -364,21 +365,21 @@ begin
       begin
         Tokens_refreshed := True; // and correct
         if UseTokenFile then
-            SaveAccessRefreshTokens
+          SaveAccessRefreshTokens
         else
-            LogLine('Please save the access_token');
+          LogLine('Please save the access_token');
       end;
     end;
   end;
 
   if EMail <> '' then
-      LogLine(Format('%s <%s>', [Fullname, EMail]));
+    LogLine(Format('%s <%s>', [Fullname, EMail]));
   if LastErrorCode <> '' then
-      LogLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
+    LogLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
   if EMail <> '' then
-      LogLine('We now have access')
+    LogLine('We now have access')
   else
-      LogLine('We don''t have access');
+    LogLine('We don''t have access');
 
 end;
 
@@ -403,7 +404,7 @@ begin
     Refresh_token := JSON.S['refresh_token'];
     Access_token := JSON.S['access_token'];
   finally
-      JSON := nil;
+    JSON := nil;
   end;
 end;
 
@@ -417,7 +418,7 @@ begin
     JSON.S['access_token'] := Access_token;
     JSON.SaveTo(token_filename);
   finally
-      JSON := nil;
+    JSON := nil;
   end;
 end;
 
@@ -462,14 +463,13 @@ begin
         SaveToFile(token_filename);
         LogLine('Tokens saved to ' + token_filename);
       finally
-          Free;
+        Free;
       end;
   finally
-      J.Free;
+    J.Free;
   end;
 end;
 {$ENDIF}
-
 
 procedure TGoogleOAuth2.GetAuthorize_token_interactive;
 var
@@ -483,25 +483,25 @@ var
   Found: string;
   Scope: string;
 begin
+
+  Scope := FScopes.DelimitedText;
+  if Scope = '' then
+  begin
+    LogLine('No scope specified in GetAccess');
+  end;
+
+  URL := AuthorizationUrl;
+  Params := '';
+  Params := Params + 'response_type=' + EncodeURLElement('code');
+  Params := Params + '&client_id=' + EncodeURLElement(FClient_id);
+  Params := Params + '&redirect_uri=' + EncodeURLElement(RedirectUri);
+  Params := Params + '&scope=' + EncodeURLElement(Scope);
+
+  LogLine('Authorizing...');
+  GoUrl := URL + '?' + Params;
+  CoInitialize(nil);
+  Browser := CreateOleObject('InternetExplorer.Application');
   try
-
-    Scope := FScopes.DelimitedText;
-    if Scope = '' then
-    begin
-      LogLine('No scope specified in GetAccess');
-    end;
-
-    URL := AuthorizationUrl;
-    Params := '';
-    Params := Params + 'response_type=' + EncodeURLElement('code');
-    Params := Params + '&client_id=' + EncodeURLElement(FClient_id);
-    Params := Params + '&redirect_uri=' + EncodeURLElement(RedirectUri);
-    Params := Params + '&scope=' + EncodeURLElement(Scope);
-
-    LogLine('Authorizing...');
-    GoUrl := URL + '?' + Params;
-    CoInitialize(nil);
-    Browser := CreateOleObject('InternetExplorer.Application');
     try
       Browser.Visible := True;
       Browser.AddressBar := False;
@@ -520,7 +520,7 @@ begin
       begin
         Authorize_token := InputBox('Authentication code', 'Please enter the authorization code', '');
         if Authorize_token <> '' then
-            DebugLine('Authorization: We have a manual Authorize_token');
+          DebugLine('Authorization: We have a manual Authorize_token');
       end
       else
       begin
@@ -528,7 +528,8 @@ begin
         Sleep(500);
         Application.ProcessMessages;
         SearchFor := 'Success code=';
-        while (Pos(SearchFor, Browser.LocationName) <> 1) do
+
+        while (browser.readystate <> 0) and (Pos(SearchFor, Browser.LocationName) <> 1) do
         begin
           Sleep(500);
           Application.ProcessMessages;
@@ -589,18 +590,17 @@ begin
 
       Browser.Quit;
 
-    finally
-      Browser := Unassigned;
-      CoUnInitialize;
+    except
+      on E: Exception do
+      begin
+        DebugLine('Browser closed without confirmation.');
+        DebugLine('Exception: ' + E.Message);
+      end;
     end;
 
-  except
-    // on E: EOleSysError do ;
-    on E: Exception do
-    begin
-      DebugLine('Browser closed without confirmation.');
-      DebugLine('Exception: ' + E.Message);
-    end;
+  finally
+    Browser := Unassigned;
+    CoUnInitialize;
   end;
 
 end;
@@ -610,7 +610,7 @@ var
   URL: string;
   Params: string;
   Response: TMemoryStream;
-  JSonStr: String;
+  JSonStr: string;
 begin
   LastErrorCode := '';
   LastErrorMessage := '';
@@ -636,14 +636,14 @@ begin
       LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
       LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
       if LastErrorCode <> '' then
-          LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+        LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
       Refresh_token := RetrieveJSONValue(JSonStr, 'refresh_token');
       Access_token := RetrieveJSONValue(JSonStr, 'access_token');
       if Access_token <> '' then
-          LogLine(Format('New refresh- & access_token received (%s, %s)', [Refresh_token, Access_token]));
+        LogLine(Format('New refresh- & access_token received (%s, %s)', [Refresh_token, Access_token]));
     end;
   finally
-      Response.Free;
+    Response.Free;
   end;
 
   if (Access_token = '') and (Authorize_token_html <> '') then
@@ -661,7 +661,7 @@ var
   URL: string;
   Params: string;
   Response: TMemoryStream;
-  JSonStr: String;
+  JSonStr: string;
 begin
   LastErrorCode := '';
   LastErrorMessage := '';
@@ -687,13 +687,14 @@ begin
       LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
       LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
       if LastErrorCode <> '' then
-          LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+        LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
       Access_token := RetrieveJSONValue(JSonStr, 'access_token');
       if Access_token <> '' then
-          LogLine(Format('New access_token received (%s)', [Access_token]));
+        LogLine(Format('New access_token received (%s)', [Access_token]));
     end;
   finally
-      Response.Free;
+    Response.Free;
+
   end;
 end;
 

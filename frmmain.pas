@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, Grids, blcksock, fpjson, jsonConf, LMessages, EditBtn, md5;
+  ComCtrls, ExtCtrls, Grids, blcksock, fpjson, jsonConf, LMessages, EditBtn,
+  DbCtrls, md5;
 
 const
   WM_AFTER_SHOW = WM_USER + 300;
@@ -61,8 +62,10 @@ type
     Label6: TLabel;
     Label7: TLabel;
     ListView1: TListView;
+    ListView2: TListView;
     PageControl6: TPageControl;
     Panel2: TPanel;
+    Panel3: TPanel;
     ProgressBar2: TProgressBar;
     Splitter1: TSplitter;
     StatusBar1: TStatusBar;
@@ -120,8 +123,10 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure ListView1DblClick(Sender: TObject);
+    procedure ListView2DblClick(Sender: TObject);
     procedure StringGrid1DblClick(Sender: TObject);
-    procedure StringGrid3KeyDown(Sender: TObject; var Key: Word;
+    procedure StringGrid3KeyDown(Sender: TObject; var Key: word;
       Shift: TShiftState);
     procedure StringGrid4DblClick(Sender: TObject);
     procedure TabSheet12Show(Sender: TObject);
@@ -138,7 +143,7 @@ type
     procedure DeleteJSONPath(filename, param: string);
     // function Download_Gdrive_File(id,auth, target: string): Boolean;
     procedure FillDriveGrid;
-    procedure UploadWithResume(fileid:string='');
+    procedure UploadWithResume(fileid: string = '');
   end;
 
 var
@@ -259,27 +264,28 @@ end;
 
 
 
+
 procedure TMainform.StringGrid1DblClick(Sender: TObject);
 var
   Filename: string;
   FileId: string;
   A: TGFileRevisions;
-  Rev: Integer;
+  Rev: integer;
 begin
 
   if Jdrive.gOAuth2.EMail = '' then exit;
 
-    StringGrid4.Options := StringGrid4.Options + [goRowSelect];
-    Stringgrid4.colcount:=9;
-    Stringgrid4.rowcount:=1;
-    StringGrid4.Cells[1, 0] := 'Title';
-    StringGrid4.Cells[2, 0] := 'Created';
-    StringGrid4.Cells[3, 0] := 'Modified';
-    StringGrid4.Cells[4, 0] := 'Filename';
-    StringGrid4.Cells[5, 0] := 'Size';
-    StringGrid4.Cells[6, 0] := 'FileId';
-    StringGrid4.Cells[7, 0] := 'MimeType';
-    StringGrid4.Cells[8, 0] := 'RevisionId';
+  StringGrid4.Options := StringGrid4.Options + [goRowSelect];
+  Stringgrid4.colcount := 9;
+  Stringgrid4.rowcount := 1;
+  StringGrid4.Cells[1, 0] := 'Title';
+  StringGrid4.Cells[2, 0] := 'Created';
+  StringGrid4.Cells[3, 0] := 'Modified';
+  StringGrid4.Cells[4, 0] := 'Filename';
+  StringGrid4.Cells[5, 0] := 'Size';
+  StringGrid4.Cells[6, 0] := 'FileId';
+  StringGrid4.Cells[7, 0] := 'MimeType';
+  StringGrid4.Cells[8, 0] := 'RevisionId';
 
 
 
@@ -295,18 +301,18 @@ begin
   try
     // JDrive.DownloadFile(FileId, Filename);
     A := JDrive.GetRevisions(FileId);
-    stringgrid4.rowcount:=Length(A)+1;
-    Memo1.lines.add(inttostr(length(A))+' revisions found');
+    stringgrid4.rowcount := Length(A) + 1;
+    Memo1.Lines.add(IntToStr(length(A)) + ' revisions found');
     if Length(A) > 0 then
       for Rev := 0 to Length(A) - 1 do
       begin;
-      StringGrid4.Cells[8, Rev+1] := A[Rev].revisionid;
-      StringGrid4.Cells[6, Rev+1] := A[Rev].id;
-      StringGrid4.Cells[4, Rev+1] := A[Rev].originalFileName;
-      StringGrid4.Cells[7, Rev+1] := A[Rev].mimetype;
-      StringGrid4.Cells[3, Rev+1] := A[Rev].modifieddate;
-      Memo1.Lines.Add(A[Rev].revisionid + ' - ' + A[Rev].mimetype + ' - ' + A[Rev].modifieddate)
-    end
+        StringGrid4.Cells[8, Rev + 1] := A[Rev].revisionid;
+        StringGrid4.Cells[6, Rev + 1] := A[Rev].id;
+        StringGrid4.Cells[4, Rev + 1] := A[Rev].originalFileName;
+        StringGrid4.Cells[7, Rev + 1] := A[Rev].mimetype;
+        StringGrid4.Cells[3, Rev + 1] := A[Rev].modifieddate;
+        Memo1.Lines.Add(A[Rev].revisionid + ' - ' + A[Rev].mimetype + ' - ' + A[Rev].modifieddate);
+      end
     else
       Memo1.Lines.Add('no revisions');
   except
@@ -314,32 +320,32 @@ begin
   end;
 end;
 
-procedure TMainform.StringGrid3KeyDown(Sender: TObject; var Key: Word;
+procedure TMainform.StringGrid3KeyDown(Sender: TObject; var Key: word;
   Shift: TShiftState);
-var fileid,revisionid:string;
+var fileid, revisionid: string;
 begin
 
   if Jdrive.gOAuth2.EMail = '' then exit;
 
-  if key=VK_DELETE then
-  with TStringGrid(Sender) do
-  begin
-    FileId := cells[6, Row];
-    Revisionid := cells[8, Row];
+  if key = VK_DELETE then
+    with TStringGrid(Sender) do
+    begin
+      FileId := cells[6, Row];
+      Revisionid := cells[8, Row];
 
-  end;
+    end;
 end;
 
 procedure TMainform.StringGrid4DblClick(Sender: TObject);
-var fileid, revisionid, filename : string;
+var fileid, revisionid, filename: string;
 begin
-    with TStringGrid(Sender) do
+  with TStringGrid(Sender) do
   begin
-    filename:= cells[4,Row];
+    filename := cells[4, Row];
     FileId := cells[6, Row];
     revisionid := cells[8, Row];
   end;
-  Jdrive.DownloadFile(fileid,filename,revisionid);
+  Jdrive.DownloadFile(fileid, filename, revisionid);
 end;
 
 {var
@@ -997,11 +1003,16 @@ begin
 
   ImgLinkList := TStringList.Create;
 
+  ProgressBar2.Max := JDrive.RecordCount;
+
   AddToLog('Busy filling grid');
   try
     Jdrive.First;
     while not Jdrive.EOF do
     begin
+
+      ProgressBar2.Position := JDrive.RecNo;
+
       if Jdrive.FieldByName('IsFolder').AsBoolean then
       begin
         if TreeView1.Items.Count = 0 then
@@ -1058,7 +1069,9 @@ begin
         ListItem.SubItems.Add(Jdrive.FieldByName('modified').AsString);
         ListItem.SubItems.Add(Jdrive.FieldByName('filesize').AsString);
         ListItem.SubItems.Add(Jdrive.FieldByName('mimeType').AsString);
+        ListItem.SubItems.Add(Jdrive.FieldByName('filename').AsString);
         ListItem.SubItems.Add(Jdrive.FieldByName('fileId').AsString);
+
       end;
 
       Jdrive.Next;
@@ -1068,29 +1081,95 @@ begin
     TreeView1.FullExpand;
 
   finally
+    ProgressBar2.Position := 0;
     ImgLinkList.Free;
   end;
 
 end;
 
-procedure TMainform.Button2Click(Sender: TObject);
-var files:TGfiles;
-var i:integer;
+procedure TMainform.ListView1DblClick(Sender: TObject);
+var
+  ListItem: TListItem;
+  FileId: string;
+  A: TGFileRevisions;
+  Rev: integer;
 begin
-      StringGrid3.Options := StringGrid3.Options + [goRowSelect];
-    StringGrid3.ColCount := 9;
+  Jdrive.Progress := ProgressBar1;
 
-    StringGrid3.RowCount := 2;
-    StringGrid3.Cells[1, 0] := 'Title';
-    StringGrid3.Cells[2, 0] := 'Created';
-    StringGrid3.Cells[3, 0] := 'Modified';
-    StringGrid3.Cells[4, 0] := 'Filename';
-    StringGrid3.Cells[5, 0] := 'Size';
-    StringGrid3.Cells[6, 0] := 'FileId';
-    StringGrid3.Cells[7, 0] := 'MimeType';
-    StringGrid3.Cells[8, 0] := 'RevisionId';
+  if Jdrive.gOAuth2.EMail = '' then exit;
 
-    StringGrid3.AutoFillColumns := False;
+  ListView2.Clear;
+  ListView2.LargeImages := ImageList1;
+  ListView2.SmallImages := ImageList1;
+
+  FileId := '';
+  if (ListView1.Selected.SubItems.Count > 4) then
+    FileId := ListView1.Selected.SubItems.Strings[4];
+
+  if FileId <> '' then
+  begin
+    A := JDrive.GetRevisions(FileId);
+    Memo1.Lines.add(IntToStr(length(A)) + ' revisions found');
+    if Length(A) > 0 then
+      for Rev := Length(A) - 1 downto 0 do
+      begin;
+        ListItem := ListView2.Items.Add;
+        ListItem.Caption := A[Rev].revisionid;
+        ListItem.SubItems.Add(A[Rev].modifieddate);
+        ListItem.SubItems.Add(A[Rev].originalFileName);
+        ListItem.SubItems.Add(A[Rev].mimetype);
+        ListItem.SubItems.Add(A[Rev].id);
+      end
+    else
+    begin
+      ListItem := ListView2.Items.Add;
+      ListItem.Caption := 'no revisions';
+    end;
+  end
+  else
+  begin
+    ListItem := ListView2.Items.Add;
+    ListItem.Caption := 'error getting revisions';
+  end;
+
+end;
+
+procedure TMainform.ListView2DblClick(Sender: TObject);
+var
+  FileId, RevisionId, Filename: string;
+begin
+  Jdrive.Progress := ProgressBar1;
+  RevisionId := ListView2.Selected.Caption;
+  FileId := '';
+  if (ListView2.Selected.SubItems.Count > 3) then
+  begin
+    FileId := ListView2.Selected.SubItems.Strings[3];
+    Filename := ListView2.Selected.SubItems.Strings[1];
+    if Jdrive.DownloadFile(fileid, filename, revisionid) then
+    begin
+      StatusBar1.SimpleText := Filename + ' downloaded';
+    end;
+  end;
+end;
+
+procedure TMainform.Button2Click(Sender: TObject);
+var files: TGfiles;
+var i: integer;
+begin
+  StringGrid3.Options := StringGrid3.Options + [goRowSelect];
+  StringGrid3.ColCount := 9;
+
+  StringGrid3.RowCount := 2;
+  StringGrid3.Cells[1, 0] := 'Title';
+  StringGrid3.Cells[2, 0] := 'Created';
+  StringGrid3.Cells[3, 0] := 'Modified';
+  StringGrid3.Cells[4, 0] := 'Filename';
+  StringGrid3.Cells[5, 0] := 'Size';
+  StringGrid3.Cells[6, 0] := 'FileId';
+  StringGrid3.Cells[7, 0] := 'MimeType';
+  StringGrid3.Cells[8, 0] := 'RevisionId';
+
+  StringGrid3.AutoFillColumns := False;
 
   JDrive.gOAuth2.LogMemo := Memo1;
   Jdrive.gOAuth2.DebugMemo := Memo2;
@@ -1101,55 +1180,56 @@ begin
 
 
   if Jdrive.gOAuth2.EMail = '' then
-  exit;
-  JDrive.open;
-  JDrive.ListFiles(files,true);
-    for i:=0 to length(files)-1 do begin
+    exit;
+  JDrive.Open;
+  JDrive.ListFiles(files, True);
+  for i := 0 to length(files) - 1 do
+  begin
 
-      if not ckHideFolders.Checked or not files[i].isFolder then
-          begin
-            with StringGrid3 do
-            begin
-              Mainform.Memo1.lines.add('Processing ...'+inttostr(i+1));
-              Cells[1, StringGrid3.RowCount - 1] := files[i].title;
-              Cells[2, StringGrid3.RowCount - 1] := files[i].createdDate;
-              Cells[3, StringGrid3.RowCount - 1] := files[i].modifiedDate;
-              Cells[4, StringGrid3.RowCount - 1] := files[i].originalFilename;
-              Cells[5, StringGrid3.RowCount - 1] := files[i].fileSize;
-              Cells[6, StringGrid3.RowCount - 1] := files[i].fileid;
-              Cells[7, StringGrid3.RowCount - 1] := files[i].mimeType;
-              if  files[i].mimeType = 'application/vnd.google-apps.folder' then
-                Cells[7, StringGrid3.RowCount - 1] := '<dir>';
-              if Length(files[i].revisions)>0 then Cells[8, StringGrid3.RowCount - 1] := files[i].Revisions[0].revisionid;
-            end;
+    if not ckHideFolders.Checked or not files[i].isFolder then
+    begin
+      with StringGrid3 do
+      begin
+        Mainform.Memo1.Lines.add('Processing ...' + IntToStr(i + 1));
+        Cells[1, StringGrid3.RowCount - 1] := files[i].title;
+        Cells[2, StringGrid3.RowCount - 1] := files[i].createdDate;
+        Cells[3, StringGrid3.RowCount - 1] := files[i].modifiedDate;
+        Cells[4, StringGrid3.RowCount - 1] := files[i].originalFilename;
+        Cells[5, StringGrid3.RowCount - 1] := files[i].fileSize;
+        Cells[6, StringGrid3.RowCount - 1] := files[i].fileid;
+        Cells[7, StringGrid3.RowCount - 1] := files[i].mimeType;
+        if files[i].mimeType = 'application/vnd.google-apps.folder' then
+          Cells[7, StringGrid3.RowCount - 1] := '<dir>';
+        if Length(files[i].revisions) > 0 then Cells[8, StringGrid3.RowCount - 1] := files[i].Revisions[0].revisionid;
+      end;
 
-            StringGrid3.RowCount := StringGrid3.RowCount + 1;
-
-          end;
+      StringGrid3.RowCount := StringGrid3.RowCount + 1;
 
     end;
+
+  end;
 
 end;
 
 procedure TMainform.Button3Click(Sender: TObject);
-var x:integer;
-var fileid,revisionid:string;
+var x: integer;
+var fileid, revisionid: string;
 begin
-if stringgrid4.RowCount=2 then
-begin
-showmessage('No revision found, you may delete the file');
-exit;
-end;
+  if stringgrid4.RowCount = 2 then
+  begin
+    ShowMessage('No revision found, you may delete the file');
+    exit;
+  end;
 
-x:=Stringgrid4.Selection.Top;
+  x := Stringgrid4.Selection.Top;
 
-fileid:=StringGrid4.Cells[6, x];
-revisionid:=StringGrid4.Cells[8, x];
+  fileid := StringGrid4.Cells[6, x];
+  revisionid := StringGrid4.Cells[8, x];
 
-if QuestionDlg('Question', 'You''re about to delete a revision of the current file, continue anyway ?',
-mtCustom, [1, 'Ok', 2, 'No thanks'], '')=2 then exit;
+  if QuestionDlg('Question', 'You''re about to delete a revision of the current file, continue anyway ?',
+    mtCustom, [1, 'Ok', 2, 'No thanks'], '') = 2 then exit;
 
-JDrive.DeleteRevisionFile(fileid,revisionid);
+  JDrive.DeleteRevisionFile(fileid, revisionid);
 end;
 
 
@@ -1280,7 +1360,7 @@ end;
 
 
 
-procedure TMainform.UploadWithResume(fileid:string='');
+procedure TMainform.UploadWithResume(fileid: string = '');
 const
   BaseURL = 'https://www.googleapis.com/upload/drive/v3/files';
   Param = 'uploadType=resumable';
@@ -1313,8 +1393,8 @@ const
     Data := TFileStream.Create(UploadFilename, fmOpenRead);
     try
       UploadURL := JDrive.GetUploadURI(BaseURL, JDrive.gOAuth2.Access_token,
-        Result.filename, Result.Description, Data,Param,fileid);
-      showmessage(UploadURL);
+        Result.filename, Result.Description, Data, Param, fileid);
+      ShowMessage(UploadURL);
       if pos('upload_id', UploadURL) > 0 then
       begin
         Result.url := UploadURL;
@@ -1417,7 +1497,7 @@ begin
           Memo1.Lines.add(Current.filename + ' md5 mismatch');
           // need to reupload
           qURL := JDrive.GetUploadURI(BaseURL, JDrive.gOAuth2.Access_token,
-            Current.Filename, Current.Description, Data,Param,fileid);
+            Current.Filename, Current.Description, Data, Param, fileid);
           if pos('upload_id', qURL) > 0 then
           begin
             Current.url := qURL;
@@ -1460,17 +1540,18 @@ end;
 
 procedure TMainform.btnUploadWithResumeClick(Sender: TObject);
 begin
-Uploadwithresume;
+  Uploadwithresume;
 end;
 
 procedure TMainform.Button4Click(Sender: TObject);
-var x:integer;
-var fileid:string;
+var x: integer;
+var fileid: string;
 begin
-x:=Stringgrid4.Selection.Top;
-fileid:=stringgrid4.Cells[6,x];
-if fileid='' then exit;
-uploadwithresume(fileid);
+  x := Stringgrid4.Selection.Top;
+  fileid := stringgrid4.Cells[6, x];
+  if fileid = '' then exit;
+  uploadwithresume(fileid);
+
 end;
 
 procedure TMainform.TabSheet12Show(Sender: TObject);

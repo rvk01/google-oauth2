@@ -251,7 +251,6 @@ function TGoogleDrive.DownloadFile(id, TargetFile: string; revisionid: string = 
 var
   HTTPGetResult: boolean;
   URL, URLM: string;
-  SaveStream: TFileStream;
 begin
   Result := False;
   if gOAuth2.EMail = '' then exit;
@@ -271,13 +270,7 @@ begin
     //    if DownHTTP.ResultCode in [200, 201] then begin
     if (DownHTTP.ResultCode >= 100) and (DownHTTP.ResultCode <= 299) then
     begin
-      // DownHTTP.Document.SaveToFile(TargetFile); produces a leak ??????? Nope
-      SaveStream := TFileStream.Create(TargetFile, fmCreate or fmOpenWrite);
-      try
-        SaveStream.CopyFrom(DownHTTP.Document, 0);
-      finally
-        SaveStream.Free;
-      end;
+      DownHTTP.Document.SaveToFile(TargetFile);
       LogMemo.Lines.Add('Download OK [' + IntToStr(DownHTTP.ResultCode) + ']');
       Result := True;
     end
@@ -291,12 +284,10 @@ begin
   end;
 end;
 
-procedure TGoogleDrive.DownStatus(Sender: TObject; Reason: THookSocketReason;
-  const Value: string);
+procedure TGoogleDrive.DownStatus(Sender: TObject; Reason: THookSocketReason; const Value: string);
 var
   V, currentHeader: string;
   i: integer;
-var
   pct: integer;
 begin
   if (MaxBytes = -1) then
@@ -305,8 +296,7 @@ begin
     begin
       currentHeader := DownHTTP.Headers[i];
       MaxBytes := GetSizeFromHeader(currentHeader);
-      if MaxBytes <> -1 then
-        break;
+      if MaxBytes <> -1 then break;
     end;
   end;
 
@@ -317,8 +307,9 @@ begin
     Bytes := Bytes + StrToInt(Value);
     pct := round(Bytes / maxbytes * 100);
     Progress.Position := pct;
-    application.ProcessMessages;
+    Application.ProcessMessages;
   end;
+
 end;
 
 function TGoogleDrive.GetSizeFromHeader(Header: string): integer;
@@ -326,22 +317,22 @@ var
   item: TStringList;
 begin
   Result := -1;
-
   if Pos('Content-Length:', Header) <> 0 then
   begin
     item := TStringList.Create();
-    item.Delimiter := ':';
-    item.StrictDelimiter := True;
-    item.DelimitedText := Header;
-    if item.Count = 2 then
-    begin
-      Result := StrToInt(Trim(item[1]));
+    try
+      item.Delimiter := ':';
+      item.StrictDelimiter := True;
+      item.DelimitedText := Header;
+      if item.Count = 2 then
+      begin
+        Result := StrToInt(Trim(item[1]));
+      end;
+    finally
+      item.Free;
     end;
   end;
 end;
-
-
-
 
 constructor TGoogleDrive.Create(AOwner: TComponent; client_id, client_secret: string);
 begin
