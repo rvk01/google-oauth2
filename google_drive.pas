@@ -15,6 +15,7 @@ type TGFileRevision = packed record
     revisionid: string;
     modifiedDate: string;
     mimetype: string;
+    originalFileName:string;
   end;
 
 type TGFileRevisions = array of TGfileRevision;
@@ -65,7 +66,7 @@ type
     destructor Destroy; override;
 
     procedure Populate(aFilter: string = '');
-    function DownloadFile(id, TargetFile: string): boolean;
+    function DownloadFile(id, TargetFile: string;revisionid:string=''): boolean;
     function GetUploadURI(const URL, auth, FileN, Description: string;
       const Data: TStream;parameters:string='';fileid:string=''): string;
     property gOAuth2: TGoogleOAuth2 read FgOAuth2 write FgOAuth2;
@@ -245,10 +246,10 @@ begin
 end;
 
 
-function TGoogleDrive.DownloadFile(id, TargetFile: string): boolean;
+function TGoogleDrive.DownloadFile(id, TargetFile: string;revisionid:string=''): boolean;
 var
   HTTPGetResult: boolean;
-  URL: string;
+  URL,URLM: string;
   SaveStream: TFileStream;
 begin
   Result := False;
@@ -261,7 +262,9 @@ begin
     Progress.Max := 100;
     DownHTTP.Sock.OnStatus := @DownStatus;
     LogMemo.Lines.Add('Downloading file...');
-    URL := 'https://www.googleapis.com/drive/v3/files/' + id + '?alt=media';
+    URLM:='?alt=media';
+    if revisionid<>'' then URLM:='/revisions/'+revisionid+URLM;
+    URL := 'https://www.googleapis.com/drive/v3/files/' + id + URLM;
     DownHTTP.Headers.Add('Authorization: Bearer ' + gOAuth2.Access_token);
     Result := DownHTTP.HTTPMethod('GET', URL);
     //    if DownHTTP.ResultCode in [200, 201] then begin
@@ -861,6 +864,7 @@ begin
               revisionid := RetrieveJSONValue(D.Items[I], 'id');
               modifiedDate := RetrieveJSONValue(D.Items[I], 'modifiedDate');
               mimetype := RetrieveJSONValue(D.Items[I], 'mimeType');
+              originalFileName := RetrieveJSONValue(D.Items[I], 'originalFilename');
               Application.ProcessMessages;
             end;
           end;
