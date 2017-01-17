@@ -123,6 +123,7 @@ type
     procedure StringGrid1DblClick(Sender: TObject);
     procedure StringGrid3KeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
+    procedure StringGrid4DblClick(Sender: TObject);
     procedure TabSheet12Show(Sender: TObject);
   private
     { private declarations }
@@ -265,6 +266,7 @@ var
   A: TGFileRevisions;
   Rev: Integer;
 begin
+
   if Jdrive.gOAuth2.EMail = '' then exit;
 
     StringGrid4.Options := StringGrid4.Options + [goRowSelect];
@@ -300,6 +302,7 @@ begin
       begin;
       StringGrid4.Cells[8, Rev+1] := A[Rev].revisionid;
       StringGrid4.Cells[6, Rev+1] := A[Rev].id;
+      StringGrid4.Cells[4, Rev+1] := A[Rev].originalFileName;
       StringGrid4.Cells[7, Rev+1] := A[Rev].mimetype;
       StringGrid4.Cells[3, Rev+1] := A[Rev].modifieddate;
       Memo1.Lines.Add(A[Rev].revisionid + ' - ' + A[Rev].mimetype + ' - ' + A[Rev].modifieddate)
@@ -325,6 +328,18 @@ begin
     Revisionid := cells[8, Row];
 
   end;
+end;
+
+procedure TMainform.StringGrid4DblClick(Sender: TObject);
+var fileid, revisionid, filename : string;
+begin
+    with TStringGrid(Sender) do
+  begin
+    filename:= cells[4,Row];
+    FileId := cells[6, Row];
+    revisionid := cells[8, Row];
+  end;
+  Jdrive.DownloadFile(fileid,filename,revisionid);
 end;
 
 {var
