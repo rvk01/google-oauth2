@@ -11,31 +11,31 @@ uses
   httpsend, blcksock, typinfo, ComCtrls, synautil, StdCtrls;
 
 type TGFileRevision = packed record
-    id:string;
+    id: string;
     revisionid: string;
     modifiedDate: string;
     mimetype: string;
-    originalFileName:string;
+    originalFileName: string;
   end;
 
 type TGFileRevisions = array of TGfileRevision;
 
 type TGFile = packed record
-    title:string;
-    fileid:string;
-    description:string;
-    createdDate:string;
-    modifiedDate:string;
-    downloadUrl:string;
-    originalFilename:string;
-    md5Checksum:string;
-    fileSize:string;
-    mimeType:string;
-    iconLink:string;
-    isFolder:boolean;
-    revisions:TGFilerevisions;
-    headRevisionId:string;
-end;
+    title: string;
+    fileid: string;
+    description: string;
+    createdDate: string;
+    modifiedDate: string;
+    downloadUrl: string;
+    originalFilename: string;
+    md5Checksum: string;
+    fileSize: string;
+    mimeType: string;
+    iconLink: string;
+    isFolder: boolean;
+    revisions: TGFilerevisions;
+    headRevisionId: string;
+  end;
 
 type TGFiles = array of TGfile;
 
@@ -43,8 +43,8 @@ type
   TGoogleDrive = class(TMemDataSet)
   private
     { private declarations }
-    const MaxResults:integer=1000;
-    var
+  const MaxResults: integer = 1000;
+  var
     FgOAuth2: TGoogleOAuth2;
     LastErrorCode: string;
     LastErrorMessage: string;
@@ -66,9 +66,9 @@ type
     destructor Destroy; override;
 
     procedure Populate(aFilter: string = '');
-    function DownloadFile(id, TargetFile: string;revisionid:string=''): boolean;
+    function DownloadFile(id, TargetFile: string; revisionid: string = ''): boolean;
     function GetUploadURI(const URL, auth, FileN, Description: string;
-      const Data: TStream;parameters:string='';fileid:string=''): string;
+      const Data: TStream; parameters: string = ''; fileid: string = ''): string;
     property gOAuth2: TGoogleOAuth2 read FgOAuth2 write FgOAuth2;
     function UploadResumableFile(const URL: string; const Data: TStream): string;
     property Progress: TProgressBar read Fprogress write Fprogress;
@@ -77,13 +77,13 @@ type
     procedure CreateFolder(foldername: string; parentid: string = '');
 
     function GetRevisions(fileid: string): TGFileRevisions;
-    procedure GetGFileRevisions(var A:TGFile);
+    procedure GetGFileRevisions(var A: TGFile);
 
-    Function DeleteRevisionFile(fileid,revisionid:string):boolean;
-    Function DeleteGFileRevision(var A:TGFileRevision):boolean;
-    Function DeleteAllGFileRevisions(var A:TGFileRevisions):boolean;
+    function DeleteRevisionFile(fileid, revisionid: string): boolean;
+    function DeleteGFileRevision(var A: TGFileRevision): boolean;
+    function DeleteAllGFileRevisions(var A: TGFileRevisions): boolean;
 
-    procedure ListFiles(var A:TGFiles;listrevisions:boolean=false);
+    procedure ListFiles(var A: TGFiles; listrevisions: boolean = False);
   published
   end;
 
@@ -201,19 +201,20 @@ end;
 
 
 function TGoogleDrive.GetUploadURI(const URL, auth, FileN, Description: string;
-  const Data: TStream;parameters:string='';fileid:string=''): string;
+  const Data: TStream; parameters: string = ''; fileid: string = ''): string;
 var
   HTTP: THTTPSend;
-  Method,URLM:string;
+  Method, URLM: string;
   s: string;
   i: integer;
 begin
   Result := '';
-  Method:='POST';
-  if fileid<>'' then
+  Method := 'POST';
+  URLM := URL;
+  if fileid <> '' then
   begin
-    Method:='PATCH';
-    URLM:=URL+'/'+fileid;
+    Method := 'PATCH';
+    URLM := URL + '/' + fileid;
   end;
 
   HTTP := THTTPSend.Create;
@@ -225,7 +226,7 @@ begin
     HTTP.Headers.Add(Format('X-Upload-Content-Length: %d', [Data.Size]));
     HTTP.MimeType := 'application/json; charset=UTF-8';
 
-    if not HTTP.HTTPMethod(Method, URLM+'?'+parameters) then
+    if not HTTP.HTTPMethod(Method, URLM + '?' + parameters) then
     begin
       LogMemo.Lines.Add('Error');
       exit;
@@ -246,10 +247,10 @@ begin
 end;
 
 
-function TGoogleDrive.DownloadFile(id, TargetFile: string;revisionid:string=''): boolean;
+function TGoogleDrive.DownloadFile(id, TargetFile: string; revisionid: string = ''): boolean;
 var
   HTTPGetResult: boolean;
-  URL,URLM: string;
+  URL, URLM: string;
   SaveStream: TFileStream;
 begin
   Result := False;
@@ -262,8 +263,8 @@ begin
     Progress.Max := 100;
     DownHTTP.Sock.OnStatus := @DownStatus;
     LogMemo.Lines.Add('Downloading file...');
-    URLM:='?alt=media';
-    if revisionid<>'' then URLM:='/revisions/'+revisionid+URLM;
+    URLM := '?alt=media';
+    if revisionid <> '' then URLM := '/revisions/' + revisionid + URLM;
     URL := 'https://www.googleapis.com/drive/v3/files/' + id + URLM;
     DownHTTP.Headers.Add('Authorization: Bearer ' + gOAuth2.Access_token);
     Result := DownHTTP.HTTPMethod('GET', URL);
@@ -643,7 +644,7 @@ end;
 
 
 
-procedure TGoogleDrive.ListFiles(var A:TGFiles;listrevisions:boolean=false);
+procedure TGoogleDrive.ListFiles(var A: TGFiles; listrevisions: boolean = False);
 var
   Response: TStringList;
   URL: string;
@@ -653,7 +654,7 @@ var
   J, D, E: TJSONData;
 begin
   Response := TStringList.Create;
-  SetLength(A,0);
+  SetLength(A, 0);
 
   try
 
@@ -662,7 +663,7 @@ begin
     gOAuth2.LogLine('Retrieving filelist ' + gOAuth2.EMail);
     URL := 'https://www.googleapis.com/drive/v2/files';
     Params := 'access_token=' + gOAuth2.Access_token;
-    Params := Params + '&maxResults='+inttostr(MaxResults);
+    Params := Params + '&maxResults=' + IntToStr(MaxResults);
     Params := Params + '&orderBy=folder,modifiedDate%20desc,title';
     if HttpGetText(URL + '?' + Params, Response) then
     begin
@@ -688,25 +689,26 @@ begin
           gOAuth2.DebugLine(format('%d items received', [D.Count]));
           for I := 0 to D.Count - 1 do
           begin
-            SetLength(A,Length(A)+1);
-            with A[Length(A)-1] do begin
+            SetLength(A, Length(A) + 1);
+            with A[Length(A) - 1] do
+            begin
 
-                title := RetrieveJSONValue(D.Items[I], 'title');
-                fileid := RetrieveJSONValue(D.Items[I], 'id');
-                description := RetrieveJSONValue(D.Items[I], 'description');
-                createdDate := RetrieveJSONValue(D.Items[I], 'createdDate');
-                modifiedDate := RetrieveJSONValue(D.Items[I], 'modifiedDate');
-                downloadUrl := RetrieveJSONValue(D.Items[I], 'downloadUrl');
-                originalFilename := RetrieveJSONValue(D.Items[I], 'originalFilename');
-                md5Checksum := RetrieveJSONValue(D.Items[I], 'md5Checksum');
-                fileSize := RetrieveJSONValue(D.Items[I], 'fileSize');
-                mimeType := RetrieveJSONValue(D.Items[I], 'mimeType');
-                iconLink := RetrieveJSONValue(D.Items[I], 'iconLink');
-                isFolder := mimeType = 'application/vnd.google-apps.folder';
-                headRevisionId := RetrieveJSONValue(D.Items[I], 'headRevisionId');
-              if listrevisions and not isFolder then revisions:=GetRevisions(fileid);
+              title := RetrieveJSONValue(D.Items[I], 'title');
+              fileid := RetrieveJSONValue(D.Items[I], 'id');
+              description := RetrieveJSONValue(D.Items[I], 'description');
+              createdDate := RetrieveJSONValue(D.Items[I], 'createdDate');
+              modifiedDate := RetrieveJSONValue(D.Items[I], 'modifiedDate');
+              downloadUrl := RetrieveJSONValue(D.Items[I], 'downloadUrl');
+              originalFilename := RetrieveJSONValue(D.Items[I], 'originalFilename');
+              md5Checksum := RetrieveJSONValue(D.Items[I], 'md5Checksum');
+              fileSize := RetrieveJSONValue(D.Items[I], 'fileSize');
+              mimeType := RetrieveJSONValue(D.Items[I], 'mimeType');
+              iconLink := RetrieveJSONValue(D.Items[I], 'iconLink');
+              isFolder := mimeType = 'application/vnd.google-apps.folder';
+              headRevisionId := RetrieveJSONValue(D.Items[I], 'headRevisionId');
+              if listrevisions and not isFolder then revisions := GetRevisions(fileid);
 
-            Application.ProcessMessages;
+              Application.ProcessMessages;
             end;
           end;
 
@@ -725,32 +727,32 @@ begin
   finally
     Response.Free;
   end;
- self.EnableControls;
+  self.EnableControls;
 end;
 
 
-Function TGoogleDrive.DeleteAllGFileRevisions(var A:TGFileRevisions):boolean;
-var i:integer;
+function TGoogleDrive.DeleteAllGFileRevisions(var A: TGFileRevisions): boolean;
+var i: integer;
 begin
-result:=false;
-for i:=0 to length(A)-1 do if not (A[i].revisionid='') then DeleteRevisionFile(A[i].id,A[i].revisionid);
-result:=true;
+  Result := False;
+  for i := 0 to length(A) - 1 do if not (A[i].revisionid = '') then DeleteRevisionFile(A[i].id, A[i].revisionid);
+  Result := True;
 end;
 
 
-Function TGoogleDrive.DeleteGFileRevision(var A:TGFileRevision):boolean;
+function TGoogleDrive.DeleteGFileRevision(var A: TGFileRevision): boolean;
 begin
-result:=false;
-if A.revisionid='' then exit;
-DeleteRevisionFile(A.id,A.revisionid);
+  Result := False;
+  if A.revisionid = '' then exit;
+  DeleteRevisionFile(A.id, A.revisionid);
 end;
 
-Function TGoogleDrive.DeleteRevisionFile(fileid,revisionid:string):boolean;
-//DELETE https://www.googleapis.com/drive/v2/files/fileId/revisions/revisionId
+function TGoogleDrive.DeleteRevisionFile(fileid, revisionid: string): boolean;
+  //DELETE https://www.googleapis.com/drive/v2/files/fileId/revisions/revisionId
 var
   HTTP: THTTPSend;
 begin
-  result:=false;
+  Result := False;
   HTTP := THTTPSend.Create;
   try
     if gOAuth2.EMail = '' then
@@ -759,21 +761,20 @@ begin
       exit;
     end;
     HTTP.Headers.Add('Authorization: Bearer ' + gOAuth2.Access_token);
-    if not HTTP.HTTPMethod('DELETE', 'https://www.googleapis.com/drive/v2/files/'+fileId+'/revisions/'+revisionId) then exit;
-    if HTTP.ResultString='' then result:=true;
+    if not HTTP.HTTPMethod('DELETE', 'https://www.googleapis.com/drive/v2/files/' + fileId + '/revisions/' + revisionId) then exit;
+    if HTTP.ResultString = '' then Result := True;
     logmemo.Lines.add(HTTP.Headers.Text + #13 + HTTP.ResultString);
   finally
     HTTP.Free;
   end;
 
-
 end;
 
 
-procedure TGoogleDrive.GetGFileRevisions(var A:TGFile);
+procedure TGoogleDrive.GetGFileRevisions(var A: TGFile);
 begin
-setlength(A.revisions,0);
-A.revisions:=GetRevisions(A.fileid);
+  setlength(A.revisions, 0);
+  A.revisions := GetRevisions(A.fileid);
 end;
 
 function TGoogleDrive.GetRevisions(fileid: string): TGFileRevisions;
@@ -860,7 +861,7 @@ begin
 
             with F[length(F) - 1] do
             begin
-              id:=fileid;
+              id := fileid;
               revisionid := RetrieveJSONValue(D.Items[I], 'id');
               modifiedDate := RetrieveJSONValue(D.Items[I], 'modifiedDate');
               mimetype := RetrieveJSONValue(D.Items[I], 'mimeType');
