@@ -130,6 +130,8 @@ type
       Shift: TShiftState);
     procedure StringGrid4DblClick(Sender: TObject);
     procedure TabSheet12Show(Sender: TObject);
+    procedure TreeView1Click(Sender: TObject);
+    procedure TreeView1SelectionChanged(Sender: TObject);
   private
     { private declarations }
   protected
@@ -142,8 +144,10 @@ type
     procedure SetJSONParam(filename, param, Value: string);
     procedure DeleteJSONPath(filename, param: string);
     // function Download_Gdrive_File(id,auth, target: string): Boolean;
-    procedure FillDriveGrid;
+    procedure FillDriveGrid_old;
+    procedure FillDriveView;
     procedure UploadWithResume(fileid: string = '');
+
   end;
 
 var
@@ -153,6 +157,7 @@ var
 implementation
 
 uses
+  DB,
   google_oauth2,
   google_calendar,
   google_drive,
@@ -818,10 +823,10 @@ end;
 
 procedure TMainform.ckHideFoldersClick(Sender: TObject);
 begin
-  FillDriveGrid;
+  FillDriveGrid_old;
 end;
 
-procedure TMainform.FillDriveGrid;
+procedure TMainform.FillDriveGrid_old;
 var
   Q: integer;
   nwWidth: integer;
@@ -914,7 +919,7 @@ begin
     StringGrid3.Cells[7, 0] := 'MimeType';
     StringGrid3.AutoFillColumns := False;
 
-    FillDriveGrid;
+    FillDriveGrid_old;
 
   finally
     Response.Free;
@@ -961,8 +966,16 @@ begin
   end;
 end;
 
+procedure TMainform.TreeView1SelectionChanged(Sender: TObject);
+begin
+end;
 
-procedure TMainform.Button1Click(Sender: TObject);
+procedure TMainform.TreeView1Click(Sender: TObject);
+begin
+  //FillDriveView;
+end;
+
+procedure TMainform.FillDriveView;
 var
   Q: integer;
   nwWidth: integer;
@@ -971,25 +984,23 @@ var
   Img: TImage;
   IconLink: string;
   ImgLinkList: TStringList;
+  MapId: String;
+  BookMark: TBookmark;
 begin
 
-  JDrive.gOAuth2.LogMemo := Memo1;
-  Jdrive.gOAuth2.DebugMemo := Memo2;
-  Jdrive.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-  Jdrive.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
-  Jdrive.gOAuth2.GetAccess([goDrive], True);
-
-  CheckTokenFile;
-
-  if Jdrive.gOAuth2.EMail = '' then
-    exit;
+  //MapId := '';
+  //if (Treeview1.Selected <> nil) and (Treeview1.Selected.Data <> nil) then
+  //begin
+  //  JDrive.GotoBookmark(Treeview1.Selected.Data);
+  //  MapId := Jdrive.FieldByName('FileId').AsString;
+  //  StatusBar1.SimpleText := MapId;
+  //end;
 
   ListView1.Clear;
   Treeview1.Items.Clear;
   Application.ProcessMessages; // update views
 
-  Jdrive.Open;
-  Jdrive.Populate();
+
   TreeView1.Images := ImageList1;
 
   // ListView1.ViewStyle:=vsIcon;
@@ -1019,10 +1030,12 @@ begin
         begin
           Treeview1.Items.Add(nil, 'Google Drive');
         end;
-        TreeNode := Treeview1.Items.AddChild(Treeview1.Items.GetFirstNode, Jdrive.FieldByName('title').AsString);
+        BookMark := JDrive.Bookmark;
+        TreeNode := Treeview1.Items.AddChildObject(
+           Treeview1.Items.GetFirstNode, Jdrive.FieldByName('title').AsString, Pointer(Bookmark));
 
         IconLink := Jdrive.FieldByName('iconLink').AsString;
-        if IconLink <> '' then
+        if false and (IconLink <> '') then
         begin
           TreeNode.ImageIndex := ImgLinkList.IndexOf(IconLink);
           if TreeNode.ImageIndex = -1 then
@@ -1049,7 +1062,7 @@ begin
         and load from internet in a thread
         *)
         IconLink := Jdrive.FieldByName('iconLink').AsString;
-        if IconLink <> '' then
+        if true and (IconLink <> '') then
         begin
           ListItem.ImageIndex := ImgLinkList.IndexOf(IconLink);
           if ListItem.ImageIndex = -1 then
@@ -1084,6 +1097,33 @@ begin
     ProgressBar2.Position := 0;
     ImgLinkList.Free;
   end;
+end;
+
+procedure TMainform.Button1Click(Sender: TObject);
+var
+  Q: integer;
+  nwWidth: integer;
+  TreeNode: TTreeNode;
+  ListItem: TListItem;
+  Img: TImage;
+  IconLink: string;
+  ImgLinkList: TStringList;
+begin
+
+  JDrive.gOAuth2.LogMemo := Memo1;
+  Jdrive.gOAuth2.DebugMemo := Memo2;
+  Jdrive.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
+  Jdrive.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
+  Jdrive.gOAuth2.GetAccess([goDrive], True);
+
+  CheckTokenFile;
+
+  if Jdrive.gOAuth2.EMail = '' then
+    exit;
+
+  Jdrive.Open;
+  Jdrive.Populate();
+  FillDriveView;
 
 end;
 
@@ -1365,6 +1405,7 @@ const
   BaseURL = 'https://www.googleapis.com/upload/drive/v3/files';
   Param = 'uploadType=resumable';
   Pendingfile = 'Pendingupload.json';
+
   function GetNewUploadFile: TPendingUpload;
   var
     UploadFilename: string;
