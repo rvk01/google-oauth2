@@ -47,8 +47,11 @@ type TGFile = packed record
 
 type TGFiles = array of TGfile;
 
-type TGoogleDriveParameters= packed record
-
+type TGoogleDriveInformation= packed record
+    limit:int64;
+    usage:int64;
+    usageInDrive:int64;
+    usageInDriveTrash:int64;
 end;
 
 type
@@ -98,7 +101,7 @@ type
     procedure ListFiles(var A: TGFiles; listrevisions: boolean = False);
 
     function GetRootFolderId:string;
-
+    function AboutGdrive:TGoogleDriveInformation;
   published
   end;
 
@@ -383,6 +386,20 @@ destructor TGoogleDrive.Destroy;
 begin
   gOAuth2.Free;
   inherited Destroy;
+end;
+
+
+function RetrieveJSONValueInt64(JSON: TJSONData; Value: string): int64;
+var
+  D: TJSONData;
+begin
+  Result := 0;
+  if Assigned(JSON) then
+  begin
+    D := JSON.FindPath(Value);
+    if assigned(D) then
+      Result := D.AsInt64;
+  end;
 end;
 
 function RetrieveJSONValue(JSON: TJSONData; Value: string): string;
@@ -790,6 +807,59 @@ begin
 end;
 
 
+
+
+function TGoogleDrive.AboutGdrive:TGoogleDriveInformation;
+var
+  HTTP: THTTPSend;
+  response:tstringlist;
+  P: TJSONParser;
+  I: integer;
+  J, D: TJSONData;
+begin
+  HTTP := THTTPSend.Create;
+  try
+    if gOAuth2.EMail = '' then
+    begin
+      logmemo.Lines.add('Not connected');
+      exit;
+    end;
+    logmemo.lines.add('Retrieving Google Drive Informations...');
+    if HTTP.HTTPMethod('GET','https://www.googleapis.com/drive/v3/about?access_token=' + gOAuth2.Access_token+'&fields=*') then
+    begin
+    response:=tstringlist.create;
+    response.LoadFromStream(HTTP.Document);
+    logmemo.Lines.add(response.Text);
+    P := TJSONParser.Create(Response.Text);
+
+    try
+    J := P.Parse;
+        if Assigned(J) then
+        begin
+        D:=J.FindPath('storageQuota');
+        if assigned(D) then
+        with result do begin
+        limit:=RetrieveJSONValueInt64(D, 'limit');
+        usage:=RetrieveJSONValueInt64(D, 'usage');
+        usageInDrive:=RetrieveJSONValueInt64(D, 'usageInDrive');
+        usageInDriveTrash:=RetrieveJSONValueInt64(D, 'usageInDriveTrash');
+        end;
+        end;
+    finally
+      P.Free;
+      if assigned(J) then J.Free;
+    end;
+
+    end;
+  finally
+    HTTP.Free;
+    Response.free;
+  end;
+   logmemo.lines.add('Done...');
+end;
+
+
+
 function TGoogleDrive.GetRootFolderId:string;
 var
   HTTP: THTTPSend;
@@ -805,7 +875,7 @@ begin
       logmemo.Lines.add('Not connected');
       exit;
     end;
-
+    //logmemo.lines.add('https://www.googleapis.com/drive/v2/about?access_token=' + gOAuth2.Access_token+'&fields=*');
     if HTTP.HTTPMethod('GET','https://www.googleapis.com/drive/v2/about?access_token=' + gOAuth2.Access_token+'&fields=*') then
     begin
     response:=tstringlist.create;
