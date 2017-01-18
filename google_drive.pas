@@ -47,6 +47,10 @@ type TGFile = packed record
 
 type TGFiles = array of TGfile;
 
+type TGoogleDriveParameters= packed record
+
+end;
+
 type
   TGoogleDrive = class(TMemDataSet)
   private
@@ -92,6 +96,9 @@ type
     function DeleteAllGFileRevisions(var A: TGFileRevisions): boolean;
 
     procedure ListFiles(var A: TGFiles; listrevisions: boolean = False);
+
+    function GetRootFolderId:string;
+
   published
   end;
 
@@ -716,7 +723,7 @@ begin
               setlength(parents,K+1);
                    with parents[K] do begin
                    id:= RetrieveJSONValue(F.Items[K], 'id');
-                   //gOAuth2.LogLine(title+' ['+id+']');
+                   gOAuth2.LogLine(title+' ['+id+']');
                    end;
               end;
 
@@ -781,6 +788,52 @@ begin
   end;
 
 end;
+
+
+function TGoogleDrive.GetRootFolderId:string;
+var
+  HTTP: THTTPSend;
+  response:tstringlist;
+  P: TJSONParser;
+  I: integer;
+  J: TJSONData;
+begin
+  HTTP := THTTPSend.Create;
+  try
+    if gOAuth2.EMail = '' then
+    begin
+      logmemo.Lines.add('Not connected');
+      exit;
+    end;
+
+    if HTTP.HTTPMethod('GET','https://www.googleapis.com/drive/v2/about?access_token=' + gOAuth2.Access_token+'&fields=*') then
+    begin
+    response:=tstringlist.create;
+    response.LoadFromStream(HTTP.Document);
+    logmemo.Lines.add(response.Text);
+    P := TJSONParser.Create(Response.Text);
+
+    try
+    J := P.Parse;
+        if Assigned(J) then
+        begin
+          result:=RetrieveJSONValue(J, 'rootFolderId');
+        end;
+    finally
+      P.Free;
+      if assigned(J) then J.Free;
+    end;
+
+    end;
+  finally
+    HTTP.Free;
+    Response.free;
+  end;
+
+end;
+
+
+//GET https://www.googleapis.com/drive/v2/about
 
 
 procedure TGoogleDrive.GetGFileRevisions(var A: TGFile);
