@@ -10,6 +10,13 @@ uses
   Classes, SysUtils, DB, Forms, google_oauth2, fpjson, jsonparser, memds,
   httpsend, blcksock, typinfo, ComCtrls, synautil, StdCtrls;
 
+type TGFileParent = packed record
+    id: string;
+end;
+
+type TGFileParents = array of TGFileParent;
+
+
 type TGFileRevision = packed record
     id: string;
     revisionid: string;
@@ -34,6 +41,7 @@ type TGFile = packed record
     iconLink: string;
     isFolder: boolean;
     revisions: TGFilerevisions;
+    parents: TGFileParents;
     headRevisionId: string;
   end;
 
@@ -641,8 +649,8 @@ var
   URL: string;
   Params: string;
   P: TJSONParser;
-  I: integer;
-  J, D, E: TJSONData;
+  I, K: integer;
+  J, D, E, F: TJSONData;
 begin
   Response := TStringList.Create;
   SetLength(A, 0);
@@ -680,6 +688,7 @@ begin
           gOAuth2.DebugLine(format('%d items received', [D.Count]));
           for I := 0 to D.Count - 1 do
           begin
+
             SetLength(A, Length(A) + 1);
             with A[Length(A) - 1] do
             begin
@@ -698,6 +707,18 @@ begin
               isFolder := mimeType = 'application/vnd.google-apps.folder';
               headRevisionId := RetrieveJSONValue(D.Items[I], 'headRevisionId');
               if listrevisions and not isFolder then revisions := GetRevisions(fileid);
+
+              // get parents
+              setlength(parents,0);
+              F := D.Items[I].FindPath('parents');
+              for K:=0 to F.Count-1 do
+              begin
+              setlength(parents,K+1);
+                   with parents[K] do begin
+                   id:= RetrieveJSONValue(F.Items[K], 'id');
+                   //gOAuth2.LogLine(title+' ['+id+']');
+                   end;
+              end;
 
               Application.ProcessMessages;
             end;
