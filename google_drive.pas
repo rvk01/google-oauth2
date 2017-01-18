@@ -10,6 +10,9 @@ uses
   Classes, SysUtils, DB, Forms, google_oauth2, fpjson, jsonparser, memds,
   httpsend, blcksock, typinfo, ComCtrls, synautil, StdCtrls;
 
+
+type apiver=(v2,v3);
+
 type TGFileParent = packed record
     id: string;
 end;
@@ -48,6 +51,7 @@ type TGFile = packed record
 type TGFiles = array of TGfile;
 
 type TGoogleDriveInformation= packed record
+    rootFolderId:string;
     limit:int64;
     usage:int64;
     usageInDrive:int64;
@@ -100,8 +104,8 @@ type
 
     procedure ListFiles(var A: TGFiles; listrevisions: boolean = False);
 
-    function GetRootFolderId:string;
-    function AboutGdrive:TGoogleDriveInformation;
+    //function GetRootFolderId:string;
+  function AboutGdrive(version:apiver):TGoogleDriveInformation;
   published
   end;
 
@@ -809,13 +813,14 @@ end;
 
 
 
-function TGoogleDrive.AboutGdrive:TGoogleDriveInformation;
+function TGoogleDrive.AboutGdrive(version:apiver):TGoogleDriveInformation;
 var
   HTTP: THTTPSend;
   response:tstringlist;
   P: TJSONParser;
   I: integer;
   J, D: TJSONData;
+  vx:string;
 begin
   HTTP := THTTPSend.Create;
   try
@@ -824,27 +829,50 @@ begin
       logmemo.Lines.add('Not connected');
       exit;
     end;
+
+    case version of
+       v2:vx:='v2';
+       v3:vx:='v3';
+    end;
+
     logmemo.lines.add('Retrieving Google Drive Informations...');
-    if HTTP.HTTPMethod('GET','https://www.googleapis.com/drive/v3/about?access_token=' + gOAuth2.Access_token+'&fields=*') then
+    if HTTP.HTTPMethod('GET','https://www.googleapis.com/drive/'+vx+'/about?access_token=' + gOAuth2.Access_token+'&fields=*') then
     begin
     response:=tstringlist.create;
     response.LoadFromStream(HTTP.Document);
-    logmemo.Lines.add(response.Text);
+   // logmemo.Lines.add(response.Text);
     P := TJSONParser.Create(Response.Text);
 
     try
     J := P.Parse;
-        if Assigned(J) then
+        Case version of
+
+        v2:if Assigned(J) then
+        begin
+        with result do begin
+        rootFolderId:=RetrieveJSONValue(J, 'rootFolderId');
+        limit:=RetrieveJSONValueInt64(J, 'quotaBytesTotal');
+        usage:=RetrieveJSONValueInt64(J, 'quotaBytesUsedAggregate');
+        usageInDrive:=RetrieveJSONValueInt64(J, 'quotaBytesUsed');
+        usageInDriveTrash:=RetrieveJSONValueInt64(J, 'quotaBytesUsedInTrash');
+        end;
+        end;
+
+        v3:if Assigned(J) then
         begin
         D:=J.FindPath('storageQuota');
         if assigned(D) then
         with result do begin
+        rootFolderId:='';
         limit:=RetrieveJSONValueInt64(D, 'limit');
         usage:=RetrieveJSONValueInt64(D, 'usage');
         usageInDrive:=RetrieveJSONValueInt64(D, 'usageInDrive');
         usageInDriveTrash:=RetrieveJSONValueInt64(D, 'usageInDriveTrash');
         end;
         end;
+
+        end;
+
     finally
       P.Free;
       if assigned(J) then J.Free;
@@ -860,7 +888,7 @@ end;
 
 
 
-function TGoogleDrive.GetRootFolderId:string;
+{function TGoogleDrive.GetRootFolderId:string;
 var
   HTTP: THTTPSend;
   response:tstringlist;
@@ -900,7 +928,7 @@ begin
     Response.free;
   end;
 
-end;
+end;     }
 
 
 //GET https://www.googleapis.com/drive/v2/about
