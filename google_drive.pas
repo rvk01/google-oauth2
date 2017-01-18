@@ -707,6 +707,7 @@ begin
               isFolder := mimeType = 'application/vnd.google-apps.folder';
               headRevisionId := RetrieveJSONValue(D.Items[I], 'headRevisionId');
               if listrevisions and not isFolder then revisions := GetRevisions(fileid);
+
               // get parents
               setlength(parents,0);
               F := D.Items[I].FindPath('parents');
