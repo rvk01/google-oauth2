@@ -13,8 +13,12 @@ uses
 
 type apiver=(v2,v3);
 
+type listsetting=(listrevisions,listparents);
+type Tlistsettings = set of listsetting;
+
 type TGFileParent = packed record
     id: string;
+    isRoot: boolean;
 end;
 
 type TGFileParents = array of TGFileParent;
@@ -43,9 +47,10 @@ type TGFile = packed record
     mimeType: string;
     iconLink: string;
     isFolder: boolean;
+    headRevisionId: string;
+    trashed: boolean;
     revisions: TGFilerevisions;
     parents: TGFileParents;
-    headRevisionId: string;
   end;
 
 type TGFiles = array of TGfile;
@@ -102,7 +107,7 @@ type
     function DeleteGFileRevision(var A: TGFileRevision): boolean;
     function DeleteAllGFileRevisions(var A: TGFileRevisions): boolean;
 
-    procedure ListFiles(var A: TGFiles; listrevisions: boolean = False);
+    procedure ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='');
 
     //function GetRootFolderId:string;
   function AboutGdrive(version:apiver):TGoogleDriveInformation;
@@ -671,7 +676,7 @@ end;
 
 
 
-procedure TGoogleDrive.ListFiles(var A: TGFiles; listrevisions: boolean = False);
+procedure TGoogleDrive.ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='');
 var
   Response: TStringList;
   URL: string;
@@ -688,10 +693,16 @@ begin
     if gOAuth2.EMail = '' then
       exit;
     gOAuth2.LogLine('Retrieving filelist ' + gOAuth2.EMail);
+    gOAuth2.LogLine('Busy...');
     URL := 'https://www.googleapis.com/drive/v2/files';
     Params := 'access_token=' + gOAuth2.Access_token;
     Params := Params + '&maxResults=' + IntToStr(MaxResults);
     Params := Params + '&orderBy=folder,modifiedDate%20desc,title';
+
+    // list specific parent folder
+    if parentid<>'' then
+    Params := Params + '&q="' + parentid + '"%20in%20parents';
+
     if HttpGetText(URL + '?' + Params, Response) then
     begin
       P := TJSONParser.Create(Response.Text);
@@ -710,8 +721,8 @@ begin
             exit;
           end;
 
-          gOAuth2.LogLine('Busy');
 
+       gOAuth2.LogLine('Parsing...');
           D := J.FindPath('items');
           gOAuth2.DebugLine(format('%d items received', [D.Count]));
           for I := 0 to D.Count - 1 do
@@ -733,10 +744,13 @@ begin
               mimeType := RetrieveJSONValue(D.Items[I], 'mimeType');
               iconLink := RetrieveJSONValue(D.Items[I], 'iconLink');
               isFolder := mimeType = 'application/vnd.google-apps.folder';
+              trashed := lowercase(RetrieveJSONValue(D.Items[I], 'trashed'))='true';
               headRevisionId := RetrieveJSONValue(D.Items[I], 'headRevisionId');
-              if listrevisions and not isFolder then revisions := GetRevisions(fileid);
+              if (listrevisions in settings) and not isFolder then revisions := GetRevisions(fileid);
 
               // get parents
+              if (listparents in settings) then
+              begin;
               setlength(parents,0);
               F := D.Items[I].FindPath('parents');
               for K:=0 to F.Count-1 do
@@ -744,15 +758,15 @@ begin
               setlength(parents,K+1);
                    with parents[K] do begin
                    id:= RetrieveJSONValue(F.Items[K], 'id');
-                   gOAuth2.LogLine(title+' ['+id+']');
+                   isroot:=lowercase(RetrieveJSONValue(F.Items[K], 'isRoot'))='true';
+                   if not isroot then gOAuth2.LogLine(inttostr(K+1)+' > '+title+' ['+id+']')
+                   else gOauth2.logline(inttostr(K+1)+' > '+title+' [root]');
                    end;
               end;
-
+              end;
               Application.ProcessMessages;
             end;
           end;
-
-          gOAuth2.LogLine(format('%d items stored', [Self.RecordCount]));
           gOAuth2.LogLine('Done');
 
         end;
@@ -788,7 +802,6 @@ begin
 end;
 
 function TGoogleDrive.DeleteRevisionFile(fileid, revisionid: string): boolean;
-  //DELETE https://www.googleapis.com/drive/v2/files/fileId/revisions/revisionId
 var
   HTTP: THTTPSend;
 begin
@@ -840,7 +853,6 @@ begin
     begin
     response:=tstringlist.create;
     response.LoadFromStream(HTTP.Document);
-   // logmemo.Lines.add(response.Text);
     P := TJSONParser.Create(Response.Text);
 
     try
@@ -885,53 +897,6 @@ begin
   end;
    logmemo.lines.add('Done...');
 end;
-
-
-
-{function TGoogleDrive.GetRootFolderId:string;
-var
-  HTTP: THTTPSend;
-  response:tstringlist;
-  P: TJSONParser;
-  I: integer;
-  J: TJSONData;
-begin
-  HTTP := THTTPSend.Create;
-  try
-    if gOAuth2.EMail = '' then
-    begin
-      logmemo.Lines.add('Not connected');
-      exit;
-    end;
-    //logmemo.lines.add('https://www.googleapis.com/drive/v2/about?access_token=' + gOAuth2.Access_token+'&fields=*');
-    if HTTP.HTTPMethod('GET','https://www.googleapis.com/drive/v2/about?access_token=' + gOAuth2.Access_token+'&fields=*') then
-    begin
-    response:=tstringlist.create;
-    response.LoadFromStream(HTTP.Document);
-    logmemo.Lines.add(response.Text);
-    P := TJSONParser.Create(Response.Text);
-
-    try
-    J := P.Parse;
-        if Assigned(J) then
-        begin
-          result:=RetrieveJSONValue(J, 'rootFolderId');
-        end;
-    finally
-      P.Free;
-      if assigned(J) then J.Free;
-    end;
-
-    end;
-  finally
-    HTTP.Free;
-    Response.free;
-  end;
-
-end;     }
-
-
-//GET https://www.googleapis.com/drive/v2/about
 
 
 procedure TGoogleDrive.GetGFileRevisions(var A: TGFile);
