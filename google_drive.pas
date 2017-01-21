@@ -103,7 +103,7 @@ type
     function GetRevisions(fileid: string): TGFileRevisions;
     procedure GetGFileRevisions(var A: TGFile);
 
-    function DeleteRevisionFile(fileid, revisionid: string): boolean;
+    function DeleteGFile(fileid:string; revisionid: string=''): boolean;
     function DeleteGFileRevision(var A: TGFileRevision): boolean;
     function DeleteAllGFileRevisions(var A: TGFileRevisions): boolean;
 
@@ -690,18 +690,18 @@ begin
 
   try
 
-    if gOAuth2.EMail = '' then
-      exit;
+    if gOAuth2.EMail = '' then exit;
+
     gOAuth2.LogLine('Retrieving filelist ' + gOAuth2.EMail);
     gOAuth2.LogLine('Busy...');
+
     URL := 'https://www.googleapis.com/drive/v2/files';
     Params := 'access_token=' + gOAuth2.Access_token;
     Params := Params + '&maxResults=' + IntToStr(MaxResults);
     Params := Params + '&orderBy=folder,modifiedDate%20desc,title';
 
     // list specific parent folder
-    if parentid<>'' then
-    Params := Params + '&q="' + parentid + '"%20in%20parents';
+    if parentid<>'' then Params := Params + '&q="' + parentid + '"%20in%20parents';
 
     if HttpGetText(URL + '?' + Params, Response) then
     begin
@@ -722,8 +722,9 @@ begin
           end;
 
 
-       gOAuth2.LogLine('Parsing...');
+          gOAuth2.LogLine('Parsing...');
           D := J.FindPath('items');
+
           gOAuth2.DebugLine(format('%d items received', [D.Count]));
           for I := 0 to D.Count - 1 do
           begin
@@ -772,7 +773,7 @@ begin
         end;
       finally
         if assigned(J) then
-          J.Free;
+        J.Free;
         P.Free;
       end;
 
@@ -789,7 +790,7 @@ function TGoogleDrive.DeleteAllGFileRevisions(var A: TGFileRevisions): boolean;
 var i: integer;
 begin
   Result := False;
-  for i := 0 to length(A) - 1 do if not (A[i].revisionid = '') then DeleteRevisionFile(A[i].id, A[i].revisionid);
+  for i := 0 to length(A) - 1 do if not (A[i].revisionid = '') then DeleteGFile(A[i].id, A[i].revisionid);
   Result := True;
 end;
 
@@ -798,12 +799,15 @@ function TGoogleDrive.DeleteGFileRevision(var A: TGFileRevision): boolean;
 begin
   Result := False;
   if A.revisionid = '' then exit;
-  DeleteRevisionFile(A.id, A.revisionid);
+  DeleteGFile(A.id, A.revisionid);
 end;
 
-function TGoogleDrive.DeleteRevisionFile(fileid, revisionid: string): boolean;
+
+
+function TGoogleDrive.DeleteGFile(fileid:string; revisionid: string=''): boolean;
 var
   HTTP: THTTPSend;
+  Params: String;
 begin
   Result := False;
   HTTP := THTTPSend.Create;
@@ -813,8 +817,11 @@ begin
       logmemo.Lines.add('Not connected');
       exit;
     end;
+  Params := '';
+  if revisionid <> '' then
+  Params := '/revisions/' + revisionid;
     HTTP.Headers.Add('Authorization: Bearer ' + gOAuth2.Access_token);
-    if not HTTP.HTTPMethod('DELETE', 'https://www.googleapis.com/drive/v2/files/' + fileId + '/revisions/' + revisionId) then exit;
+    if not HTTP.HTTPMethod('DELETE', 'https://www.googleapis.com/drive/v3/files/' + fileId + Params) then exit;
     if HTTP.ResultString = '' then Result := True;
     logmemo.Lines.add(HTTP.Headers.Text + #13 + HTTP.ResultString);
   finally
