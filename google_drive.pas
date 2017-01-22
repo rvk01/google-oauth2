@@ -108,7 +108,7 @@ type
     function DeleteGFileRevision(var A: TGFileRevision): boolean;
     function DeleteAllGFileRevisions(var A: TGFileRevisions): boolean;
 
-    function GetGFileMetadata(id:string;settings:TListSettings):TGFile;
+    function GetGFileMetadata(id:string;settings:TListSettings;customfields:string='*'):TGFile;
     procedure ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='');
     procedure FillGFileMetadata(var A:TGFile;settings:Tlistsettings);
 
@@ -723,7 +723,7 @@ begin
   end;
 end;
 
-function TGoogleDrive.GetGFileMetadata(id:string;settings:TListSettings):TGFile;
+function TGoogleDrive.GetGFileMetadata(id:string;settings:TListSettings;customfields:string='*'):TGFile;
 var
   Response: TStringList;
   URL: string;
@@ -744,7 +744,7 @@ begin
 
     URL := 'https://www.googleapis.com/drive/v3/files/'+id;
     Params := 'access_token=' + gOAuth2.Access_token;
-    if HttpGetText(URL + '?' + Params+'&fields=*', Response) then
+    if HttpGetText(URL + '?' + Params+'&fields='+customfields, Response) then
     begin
       P := TJSONParser.Create(Response.Text);
 try
@@ -806,7 +806,7 @@ begin
     Params := 'access_token=' + gOAuth2.Access_token;
     Params := Params + '&maxResults=' + IntToStr(MaxResults);
     Params := Params + '&orderBy=folder,modifiedTime%20desc,name';
-    if metadata in settings then Params := Params + '&Fields=*';
+    if metadata in settings then Params := Params + '&fields=*';
 
     // list specific parent folder
     if parentid<>'' then Params := Params + '&q="' + parentid + '"%20in%20parents';
