@@ -13,7 +13,7 @@ uses
 
 type apiver=(v2,v3);
 
-type listsetting=(listrevisions,listparents,metadata);
+type listsetting=(listrevisions,listparents);
 type Tlistsettings = set of listsetting;
 
 type TGFileParent = packed record
@@ -800,11 +800,8 @@ begin
 
     if gOAuth2.EMail = '' then exit;
 
-    if not (customfields='') then
-    begin
-    customfields:='files/'+customfields;
-    customfields:=StringReplace(customfields,',',',files/',[rfReplaceAll]);
-    end;
+ if (customfields<>'') and (customfield <> '*') then
+  customfields := 'files(' + customfields + ')';
 
     gOAuth2.LogLine('Retrieving filelist ' + gOAuth2.EMail);
     gOAuth2.LogLine('Busy...');
@@ -813,7 +810,7 @@ begin
     Params := 'access_token=' + gOAuth2.Access_token;
     Params := Params + '&maxResults=' + IntToStr(MaxResults);
     Params := Params + '&orderBy=folder,modifiedTime%20desc,name';
-    if metadata in settings then Params := Params + '&fields='+customfields;
+    Params := Params + '&fields='+customfields;
 
     // list specific parent folder
     if parentid<>'' then Params := Params + '&q="' + parentid + '"%20in%20parents';
