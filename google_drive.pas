@@ -109,7 +109,7 @@ type
     function DeleteAllGFileRevisions(var A: TGFileRevisions): boolean;
 
     function GetGFileMetadata(id:string;settings:TListSettings;customfields:string='*'):TGFile;
-    procedure ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='');
+    procedure ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='';customfields:string='*');
     procedure FillGFileMetadata(var A:TGFile;settings:Tlistsettings);
 
     //function GetRootFolderId:string;
@@ -783,7 +783,7 @@ if A.fileid='' then exit;
 A:=GetGFileMetadata(A.fileid,settings);
 end;
 
-procedure TGoogleDrive.ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='');
+procedure TGoogleDrive.ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='';customfields:string='*');
 var
   Response: TStringList;
   URL: string;
@@ -791,6 +791,7 @@ var
   P: TJSONParser;
   I, K: integer;
   J, D, E, F: TJSONData;
+
 begin
   Response := TStringList.Create;
   SetLength(A, 0);
@@ -799,6 +800,12 @@ begin
 
     if gOAuth2.EMail = '' then exit;
 
+    if not (customfields='') then
+    begin
+    customfields:='files/'+customfields;
+    customfields:=StringReplace(customfields,',',',files/',[rfReplaceAll]);
+    end;
+
     gOAuth2.LogLine('Retrieving filelist ' + gOAuth2.EMail);
     gOAuth2.LogLine('Busy...');
 
@@ -806,7 +813,7 @@ begin
     Params := 'access_token=' + gOAuth2.Access_token;
     Params := Params + '&maxResults=' + IntToStr(MaxResults);
     Params := Params + '&orderBy=folder,modifiedTime%20desc,name';
-    if metadata in settings then Params := Params + '&fields=*';
+    if metadata in settings then Params := Params + '&fields='+customfields;
 
     // list specific parent folder
     if parentid<>'' then Params := Params + '&q="' + parentid + '"%20in%20parents';
