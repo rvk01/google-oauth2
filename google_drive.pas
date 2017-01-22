@@ -18,7 +18,7 @@ type Tlistsettings = set of listsetting;
 
 type TGFileParent = packed record
     id: string;
-    isRoot: boolean;
+//isRoot: boolean;
 end;
 
 type TGFileParents = array of TGFileParent;
@@ -713,10 +713,10 @@ begin
              setlength(parents,K+1);
                with parents[K] do
                begin
-                 id:= RetrieveJSONValue(F.Items[K], 'id');
-                 isroot:=lowercase(RetrieveJSONValue(F.Items[K], 'isRoot'))='true';
+                 id:= (F.Items[K]).AsString;
+                 {isroot:=lowercase(RetrieveJSONValue(F.Items[K], 'isRoot'))='true';
                  if not isroot then gOAuth2.LogLine(inttostr(K+1)+' > '+name+' ['+id+']')
-                 else gOauth2.logline(inttostr(K+1)+' > '+name+' [root]');
+                 else gOauth2.logline(inttostr(K+1)+' > '+name+' [root]');}
                end;
              end;
        end;
@@ -800,7 +800,7 @@ begin
 
     if gOAuth2.EMail = '' then exit;
 
- if (customfields<>'') and (customfield <> '*') then
+ if (customfields<>'') and (customfields<> '*') then
   customfields := 'files(' + customfields + ')';
 
     gOAuth2.LogLine('Retrieving filelist ' + gOAuth2.EMail);
