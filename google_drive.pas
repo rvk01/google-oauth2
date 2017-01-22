@@ -13,7 +13,7 @@ uses
 
 type apiver=(v2,v3);
 
-type listsetting=(listrevisions,listparents);
+type listsetting=(listrevisions,listparents,metadata);
 type Tlistsettings = set of listsetting;
 
 type TGFileParent = packed record
@@ -35,15 +35,15 @@ type TGFileRevision = packed record
 type TGFileRevisions = array of TGfileRevision;
 
 type TGFile = packed record
-    title: string;
+    name: string;
     fileid: string;
     description: string;
-    createdDate: string;
-    modifiedDate: string;
+    createdTime: string;
+    modifiedTime: string;
     downloadUrl: string;
     originalFilename: string;
     md5Checksum: string;
-    fileSize: string;
+    size: string;
     mimeType: string;
     iconLink: string;
     isFolder: boolean;
@@ -82,7 +82,8 @@ type
       const Value: string);
     function GetSizeFromHeader(Header: string): integer;
     procedure UpStatus(Sender: TObject; Reason: THookSocketReason; const Value: string);
-  protected
+    function ParseMetadata(A:TJSONData;settings:TlistSettings):TGFile;
+    protected
     { protected declarations }
   public
     { public declarations }
@@ -107,7 +108,9 @@ type
     function DeleteGFileRevision(var A: TGFileRevision): boolean;
     function DeleteAllGFileRevisions(var A: TGFileRevisions): boolean;
 
+    function GetGFileMetadata(id:string;settings:TListSettings):TGFile;
     procedure ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='');
+    procedure FillGFileMetadata(var A:TGFile;settings:Tlistsettings);
 
     //function GetRootFolderId:string;
   function AboutGdrive(version:apiver):TGoogleDriveInformation;
@@ -675,6 +678,110 @@ end;
 
 
 
+function TGoogleDrive.ParseMetadata(A:TJSONData;settings:TlistSettings):TGFile;
+var F: TJSONData;
+var K: integer;
+begin
+
+  with result do
+  begin
+
+    fileid := RetrieveJSONValue(A, 'id');
+    name := RetrieveJSONValue(A, 'name');
+    mimeType := RetrieveJSONValue(A, 'mimeType');
+    description := RetrieveJSONValue(A, 'description');
+    createdTime := RetrieveJSONValue(A, 'createdTime');
+    modifiedTime := RetrieveJSONValue(A, 'modifiedTime');
+    downloadUrl := RetrieveJSONValue(A, 'downloadUrl');
+    originalFilename := RetrieveJSONValue(A, 'originalFilename');
+    md5Checksum := RetrieveJSONValue(A, 'md5Checksum');
+    size := RetrieveJSONValue(A, 'size');
+    iconLink := RetrieveJSONValue(A, 'iconLink');
+    isFolder := mimeType = 'application/vnd.google-apps.folder';
+    trashed := lowercase(RetrieveJSONValue(A, 'trashed'))='true';
+    headRevisionId := RetrieveJSONValue(A, 'headRevisionId');
+
+    if (listrevisions in settings) and not isFolder then revisions := GetRevisions(fileid);
+
+   // get parents
+   if (listparents in settings) then
+       begin;
+       setlength(parents,0);
+       F := A.FindPath('parents');
+         for K:=0 to F.Count-1 do
+             begin
+             setlength(parents,K+1);
+               with parents[K] do
+               begin
+                 id:= RetrieveJSONValue(F.Items[K], 'id');
+                 isroot:=lowercase(RetrieveJSONValue(F.Items[K], 'isRoot'))='true';
+                 if not isroot then gOAuth2.LogLine(inttostr(K+1)+' > '+name+' ['+id+']')
+                 else gOauth2.logline(inttostr(K+1)+' > '+name+' [root]');
+               end;
+             end;
+       end;
+  end;
+end;
+
+function TGoogleDrive.GetGFileMetadata(id:string;settings:TListSettings):TGFile;
+var
+  Response: TStringList;
+  URL: string;
+  Params: string;
+  P: TJSONParser;
+  I, K: integer;
+  A, J, D, E, F: TJSONData;
+begin
+  Response := TStringList.Create;
+
+
+
+    if id='' then exit;
+    if gOAuth2.EMail = '' then exit;
+
+    gOAuth2.LogLine('Retrieving metadata ' + gOAuth2.EMail);
+    gOAuth2.LogLine('Busy...');
+
+    URL := 'https://www.googleapis.com/drive/v3/files/'+id;
+    Params := 'access_token=' + gOAuth2.Access_token;
+    if HttpGetText(URL + '?' + Params+'&fields=*', Response) then
+    begin
+      P := TJSONParser.Create(Response.Text);
+try
+        J := P.Parse;
+
+if Assigned(J) then
+begin
+
+          A := J.FindPath('error');
+          if assigned(A) then
+          begin
+            LastErrorCode := RetrieveJSONValue(A, 'code');
+            LastErrorMessage := RetrieveJSONValue(A, 'message');
+            gOAuth2.LogLine(format('Error %s: %s',
+              [LastErrorCode, LastErrorMessage]));
+            exit;
+          end;
+
+          A := J;
+          Result:=ParseMetaData(A,settings);
+
+end;
+
+     finally
+        if assigned(J) then
+        J.Free;
+        P.Free;
+      end;
+    end;
+  end;
+
+
+procedure TGoogleDrive.FillGFileMetadata(var A:TGFile;settings:Tlistsettings);
+begin
+if A.fileid='' then exit;
+A:=GetGFileMetadata(A.fileid,settings);
+end;
 
 procedure TGoogleDrive.ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='');
 var
@@ -695,14 +802,16 @@ begin
     gOAuth2.LogLine('Retrieving filelist ' + gOAuth2.EMail);
     gOAuth2.LogLine('Busy...');
 
-    URL := 'https://www.googleapis.com/drive/v2/files';
+    URL := 'https://www.googleapis.com/drive/v3/files';
     Params := 'access_token=' + gOAuth2.Access_token;
     Params := Params + '&maxResults=' + IntToStr(MaxResults);
-    Params := Params + '&orderBy=folder,modifiedDate%20desc,title';
+    Params := Params + '&orderBy=folder,modifiedTime%20desc,name';
+    if metadata in settings then Params := Params + '&Fields=*';
 
     // list specific parent folder
     if parentid<>'' then Params := Params + '&q="' + parentid + '"%20in%20parents';
 
+    goauth2.LogLine(URL+'?'+params);
     if HttpGetText(URL + '?' + Params, Response) then
     begin
       P := TJSONParser.Create(Response.Text);
@@ -723,50 +832,15 @@ begin
 
 
           gOAuth2.LogLine('Parsing...');
-          D := J.FindPath('items');
+          D := J.FindPath('files');
 
           gOAuth2.DebugLine(format('%d items received', [D.Count]));
           for I := 0 to D.Count - 1 do
           begin
 
-            SetLength(A, Length(A) + 1);
-            with A[Length(A) - 1] do
-            begin
-
-              title := RetrieveJSONValue(D.Items[I], 'title');
-              fileid := RetrieveJSONValue(D.Items[I], 'id');
-              description := RetrieveJSONValue(D.Items[I], 'description');
-              createdDate := RetrieveJSONValue(D.Items[I], 'createdDate');
-              modifiedDate := RetrieveJSONValue(D.Items[I], 'modifiedDate');
-              downloadUrl := RetrieveJSONValue(D.Items[I], 'downloadUrl');
-              originalFilename := RetrieveJSONValue(D.Items[I], 'originalFilename');
-              md5Checksum := RetrieveJSONValue(D.Items[I], 'md5Checksum');
-              fileSize := RetrieveJSONValue(D.Items[I], 'fileSize');
-              mimeType := RetrieveJSONValue(D.Items[I], 'mimeType');
-              iconLink := RetrieveJSONValue(D.Items[I], 'iconLink');
-              isFolder := mimeType = 'application/vnd.google-apps.folder';
-              trashed := lowercase(RetrieveJSONValue(D.Items[I], 'trashed'))='true';
-              headRevisionId := RetrieveJSONValue(D.Items[I], 'headRevisionId');
-              if (listrevisions in settings) and not isFolder then revisions := GetRevisions(fileid);
-
-              // get parents
-              if (listparents in settings) then
-              begin;
-              setlength(parents,0);
-              F := D.Items[I].FindPath('parents');
-              for K:=0 to F.Count-1 do
-              begin
-              setlength(parents,K+1);
-                   with parents[K] do begin
-                   id:= RetrieveJSONValue(F.Items[K], 'id');
-                   isroot:=lowercase(RetrieveJSONValue(F.Items[K], 'isRoot'))='true';
-                   if not isroot then gOAuth2.LogLine(inttostr(K+1)+' > '+title+' ['+id+']')
-                   else gOauth2.logline(inttostr(K+1)+' > '+title+' [root]');
-                   end;
-              end;
-              end;
-              Application.ProcessMessages;
-            end;
+            SetLength(A, I + 1);
+            A[I]:=ParseMetaData(D.Items[I],settings);
+            Application.ProcessMessages;
           end;
           gOAuth2.LogLine('Done');
 
@@ -782,7 +856,6 @@ begin
   finally
     Response.Free;
   end;
-  self.EnableControls;
 end;
 
 
