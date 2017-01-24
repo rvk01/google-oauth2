@@ -1,24 +1,24 @@
 object Mainform: TMainform
   Left = 247
-  Height = 523
+  Height = 746
   Top = 104
-  Width = 745
+  Width = 1147
   Caption = 'Google OAuth 2.0 testapp'
-  ClientHeight = 523
-  ClientWidth = 745
+  ClientHeight = 746
+  ClientWidth = 1147
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
   Position = poScreenCenter
-  LCLVersion = '1.7'
+  LCLVersion = '1.6.0.4'
   object PageControl6: TPageControl
     Left = 0
-    Height = 523
+    Height = 746
     Top = 0
-    Width = 745
-    ActivePage = TabSheet14
+    Width = 1147
+    ActivePage = TabSheet15
     Align = alClient
-    TabIndex = 0
+    TabIndex = 1
     TabOrder = 0
     object TabSheet14: TTabSheet
       Caption = 'Google Access'
@@ -345,6 +345,8 @@ object Mainform: TMainform
                 Top = 110
                 Width = 260
                 CalendarDisplaySettings = [dsShowHeadings, dsShowDayNames]
+                OKCaption = 'OK'
+                CancelCaption = 'Cancel'
                 DateOrder = doNone
                 ButtonWidth = 23
                 NumGlyphs = 1
@@ -358,6 +360,8 @@ object Mainform: TMainform
                 Top = 142
                 Width = 260
                 CalendarDisplaySettings = [dsShowHeadings, dsShowDayNames]
+                OKCaption = 'OK'
+                CancelCaption = 'Cancel'
                 DateOrder = doNone
                 ButtonWidth = 23
                 NumGlyphs = 1
@@ -683,16 +687,15 @@ object Mainform: TMainform
     end
     object TabSheet15: TTabSheet
       Caption = 'Google Drive'
-      ClientHeight = 397
-      ClientWidth = 737
+      ClientHeight = 718
+      ClientWidth = 1139
       object TreeView1: TTreeView
         Left = 0
-        Height = 306
+        Height = 627
         Top = 48
         Width = 209
         Align = alLeft
         DefaultItemHeight = 18
-        ExpandSignSize = 16
         RowSelect = True
         TabOrder = 0
         OnClick = TreeView1Click
@@ -703,11 +706,11 @@ object Mainform: TMainform
         Left = 0
         Height = 48
         Top = 0
-        Width = 737
+        Width = 1139
         Align = alTop
         Caption = 'Panel2'
         ClientHeight = 48
-        ClientWidth = 737
+        ClientWidth = 1139
         TabOrder = 1
         object Button1: TButton
           Left = 8
@@ -719,7 +722,7 @@ object Mainform: TMainform
           TabOrder = 0
         end
         object Edit4: TEdit
-          Left = 488
+          Left = 890
           Height = 23
           Top = 10
           Width = 236
@@ -729,7 +732,7 @@ object Mainform: TMainform
           Text = 'Edit1'
         end
         object Label7: TLabel
-          Left = 456
+          Left = 858
           Height = 15
           Top = 14
           Width = 26
@@ -737,69 +740,77 @@ object Mainform: TMainform
           Caption = 'Filter'
           ParentColor = False
         end
+        object listmthd: TCheckBox
+          Left = 118
+          Height = 19
+          Top = 13
+          Width = 89
+          Caption = 'list method 2'
+          TabOrder = 2
+        end
       end
       object StatusBar1: TStatusBar
         Left = 0
         Height = 23
-        Top = 374
-        Width = 737
+        Top = 695
+        Width = 1139
         Panels = <>
       end
       object Splitter1: TSplitter
         Left = 209
-        Height = 306
+        Height = 627
         Top = 48
         Width = 15
       end
       object ProgressBar2: TProgressBar
         Left = 0
         Height = 20
-        Top = 354
-        Width = 737
+        Top = 675
+        Width = 1139
         Align = alBottom
         TabOrder = 4
       end
       object Panel3: TPanel
         Left = 224
-        Height = 306
+        Height = 627
         Top = 48
-        Width = 513
+        Width = 915
         Align = alClient
         Caption = 'Panel3'
-        ClientHeight = 306
-        ClientWidth = 513
+        ClientHeight = 627
+        ClientWidth = 915
         TabOrder = 5
         object ListView1: TListView
           Left = 1
-          Height = 167
-          Top = 1
-          Width = 511
-          Align = alClient
+          Height = 457
+          Top = 32
+          Width = 773
+          Align = alCustom
+          Anchors = [akTop, akLeft, akRight, akBottom]
           Columns = <          
             item
-              AutoSize = True
               Caption = 'Name'
-              Width = 47
+              Width = 400
             end          
             item
               AutoSize = True
               Caption = 'Date modified'
-              Width = 90
+              Width = 87
             end          
             item
               AutoSize = True
               Caption = 'Type'
-              Width = 41
+              Width = 38
             end          
             item
               AutoSize = True
               Caption = 'Size'
-              Width = 35
+              Width = 32
             end          
             item
               AutoSize = True
               Caption = 'Original filename'
-              Width = 106
+              Width = 103
             end>
           MultiSelect = True
           ReadOnly = True
@@ -811,29 +822,29 @@ object Mainform: TMainform
         object ListView2: TListView
           Left = 1
           Height = 137
-          Top = 168
-          Width = 511
+          Top = 489
+          Width = 913
           Align = alBottom
           Columns = <          
             item
               AutoSize = True
               Caption = 'Revision'
-              Width = 59
+              Width = 507
             end          
             item
               AutoSize = True
               Caption = 'Date modified'
-              Width = 90
+              Width = 87
             end          
             item
               AutoSize = True
               Caption = 'Original filename'
-              Width = 106
+              Width = 103
             end          
             item
               AutoSize = True
               Caption = 'Mimetype'
-              Width = 69
+              Width = 66
             end>
           MultiSelect = True
           ReadOnly = True
@@ -842,11 +853,28 @@ object Mainform: TMainform
           ViewStyle = vsReport
           OnDblClick = ListView2DblClick
         end
+        object Button6: TButton
+          Left = 1
+          Height = 25
+          Top = 6
+          Width = 75
+          Caption = '< GO BACK'
+          TabOrder = 2
+        end
+        object Button7: TButton
+          Left = 785
+          Height = 25
+          Top = 42
+          Width = 117
+          Anchors = [akTop, akRight]
+          Caption = 'Delete selected'
+          TabOrder = 3
+        end
       end
     end
   end
   object ImageList1: TImageList
-    Left = 365
-    Top = 205
+    left = 365
+    top = 205
   end
 end

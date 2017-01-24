@@ -87,6 +87,7 @@ type
     { protected declarations }
   public
     { public declarations }
+  var Files: TGFiles;
     constructor Create(AOwner: TComponent; client_id, client_secret: string); overload;
     destructor Destroy; override;
 
@@ -97,6 +98,7 @@ type
     property gOAuth2: TGoogleOAuth2 read FgOAuth2 write FgOAuth2;
     function UploadResumableFile(const URL: string; const Data: TStream): string;
     property Progress: TProgressBar read Fprogress write Fprogress;
+   property GFiles: TGFiles read Files write Files;
     property LogMemo: TMemo read FLogMemo write FLogMemo;
     property DebugMemo: TMemo read FDebugMemo write FDebugMemo;
     procedure CreateFolder(foldername: string; parentid: string = '');
@@ -808,8 +810,8 @@ begin
 
     URL := 'https://www.googleapis.com/drive/v3/files';
     Params := 'access_token=' + gOAuth2.Access_token;
-    Params := Params + '&maxResults=' + IntToStr(MaxResults);
-    Params := Params + '&orderBy=folder,modifiedTime%20desc,name';
+    Params := Params + '&pageSize=' + IntToStr(MaxResults);
+    Params := Params + '&orderBy=modifiedTime%20desc,name';
     Params := Params + '&fields='+customfields;
 
     // list specific parent folder
