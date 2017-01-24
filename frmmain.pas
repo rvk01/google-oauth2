@@ -31,8 +31,11 @@ type
     Button5: TButton;
     btGetAppointments: TButton;
     btClearDebug: TButton;
+    Button6: TButton;
+    Button7: TButton;
     Button8: TButton;
     btGetContacts: TButton;
+    listmthd: TCheckBox;
     ckHideFolders: TCheckBox;
     CheckGroup1: TCheckGroup;
 
@@ -147,7 +150,7 @@ type
     procedure FillDriveGrid_old;
     procedure FillDriveView;
     procedure UploadWithResume(fileid: string = '');
-
+    procedure FillDriveView2;
   end;
 
 var
@@ -975,6 +978,133 @@ begin
   //FillDriveView;
 end;
 
+
+procedure TMainform.FillDriveView2;
+var
+  Q: integer;
+  nwWidth: integer;
+  TreeNode: TTreeNode;
+  ListItem: TListItem;
+  Img: TImage;
+  IconLink: string;
+  ImgLinkList: TStringList;
+  MapId: String;
+  z:integer;
+begin
+
+  //MapId := '';
+  //if (Treeview1.Selected <> nil) and (Treeview1.Selected.Data <> nil) then
+  //begin
+  //  JDrive.GotoBookmark(Treeview1.Selected.Data);
+  //  MapId := Jdrive.FieldByName('FileId').AsString;
+  //  StatusBar1.SimpleText := MapId;
+  //end;
+
+  ListView1.Clear;
+  Treeview1.Items.Clear;
+  Listview1.Visible:=false;
+  Treeview1.Visible:=false;
+  Application.ProcessMessages; // update views
+
+
+  TreeView1.Images := ImageList1;
+
+  // ListView1.ViewStyle:=vsIcon;
+  ListView1.MultiSelect := True;
+
+  ListView1.LargeImages := nil;
+  ListView1.SmallImages := nil;
+  ImageList1.Clear;
+  ListView1.LargeImages := ImageList1;
+  ListView1.SmallImages := ImageList1;
+
+  ImgLinkList := TStringList.Create;
+
+
+  ProgressBar2.Max := length(JDrive.Files);
+
+  AddToLog('Busy filling grid');
+  try
+    for z:=0 to length(JDrive.Files)-1 do
+    begin
+      application.processmessages;
+      ProgressBar2.Position := z;
+      if Jdrive.Files[z].isFolder then
+      begin
+        if TreeView1.Items.Count = 0 then
+        begin
+          Treeview1.Items.Add(nil, 'Google Drive');
+        end;
+        TreeNode := Treeview1.Items.AddChild(Treeview1.Items.GetFirstNode, Jdrive.Files[z].name);
+
+        IconLink := Jdrive.Files[z].iconLink;
+        if false and (IconLink <> '') then
+        begin
+          TreeNode.ImageIndex := ImgLinkList.IndexOf(IconLink);
+          if TreeNode.ImageIndex = -1 then
+          begin
+            Img := TImage.Create(nil);
+            try
+              LoadImageFromWeb(Img, IconLink);
+              TreeNode.ImageIndex := ImageList1.Add(Img.Picture.Bitmap, nil);
+              ImgLinkList.Add(IconLink);
+            finally
+              Img.Free;
+            end;
+          end;
+        end;
+
+      end
+      else
+      begin
+        ListItem := ListView1.Items.Add;
+        (*
+        Load icon 90x90 to a stringlist
+        Convert them to 16x16
+        and load from internet in a thread
+        *)
+        IconLink := Jdrive.Files[z].iconLink;
+        if true and (IconLink <> '') then
+        begin
+          ListItem.ImageIndex := ImgLinkList.IndexOf(IconLink);
+          if ListItem.ImageIndex = -1 then
+          begin
+            Img := TImage.Create(nil);
+            try
+              LoadImageFromWeb(Img, IconLink);
+              ListItem.ImageIndex := ImageList1.Add(Img.Picture.Bitmap, nil);
+              ImgLinkList.Add(IconLink);
+            finally
+              Img.Free;
+            end;
+          end;
+        end;
+
+        ListItem.Caption := Jdrive.Files[z].name;
+        ListItem.SubItems.Add(Jdrive.Files[z].modifiedTime);
+        ListItem.SubItems.Add(Jdrive.Files[z].size);
+        ListItem.SubItems.Add(Jdrive.Files[z].mimeType);
+        ListItem.SubItems.Add(Jdrive.Files[z].originalFilename);
+        ListItem.SubItems.Add(Jdrive.Files[z].fileid);
+
+      end;
+
+//      Jdrive.Next;
+    end;
+
+    AddToLog('Done filling grid');
+    TreeView1.FullExpand;
+
+  finally
+    ProgressBar2.Position := 0;
+    ImgLinkList.Free;
+  Listview1.Visible:=true;
+  Treeview1.Visible:=true;
+
+  end;
+end;
+
+
 procedure TMainform.FillDriveView;
 var
   Q: integer;
@@ -1122,8 +1252,17 @@ begin
     exit;
 
   Jdrive.Open;
+  if not listmthd.checked then
+    begin
   Jdrive.Populate();
   FillDriveView;
+    end
+  else
+    begin
+    JDrive.ListFiles(JDrive.Files,[],'root','name,mimeType,id,size,modifiedTime,iconLink');
+    FillDriveView2;
+    end;
+
 
 end;
 
@@ -1222,7 +1361,6 @@ begin
   if Jdrive.gOAuth2.EMail = '' then
     exit;
   JDrive.Open;
-  JDrive.ListFiles(files, True);
   for i := 0 to length(files) - 1 do
   begin
 
@@ -1231,11 +1369,11 @@ begin
       with StringGrid3 do
       begin
         Mainform.Memo1.Lines.add('Processing ...' + IntToStr(i + 1));
-        Cells[1, StringGrid3.RowCount - 1] := files[i].title;
-        Cells[2, StringGrid3.RowCount - 1] := files[i].createdDate;
-        Cells[3, StringGrid3.RowCount - 1] := files[i].modifiedDate;
+        Cells[1, StringGrid3.RowCount - 1] := files[i].name;
+        Cells[2, StringGrid3.RowCount - 1] := files[i].createdTime;
+        Cells[3, StringGrid3.RowCount - 1] := files[i].modifiedTime;
         Cells[4, StringGrid3.RowCount - 1] := files[i].originalFilename;
-        Cells[5, StringGrid3.RowCount - 1] := files[i].fileSize;
+        Cells[5, StringGrid3.RowCount - 1] := files[i].Size;
         Cells[6, StringGrid3.RowCount - 1] := files[i].fileid;
         Cells[7, StringGrid3.RowCount - 1] := files[i].mimeType;
         if files[i].mimeType = 'application/vnd.google-apps.folder' then
@@ -1269,7 +1407,7 @@ begin
   if QuestionDlg('Question', 'You''re about to delete a revision of the current file, continue anyway ?',
     mtCustom, [1, 'Ok', 2, 'No thanks'], '') = 2 then exit;
 
-  JDrive.DeleteRevisionFile(fileid, revisionid);
+  JDrive.DeleteGFile(fileid, revisionid);
 end;
 
 
