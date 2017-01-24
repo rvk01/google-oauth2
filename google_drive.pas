@@ -67,7 +67,7 @@ type
   TGoogleDrive = class(TMemDataSet)
   private
     { private declarations }
-  const MaxResults: integer = 1000;
+  const MaxResults: integer = 100;
   var
     FgOAuth2: TGoogleOAuth2;
     LastErrorCode: string;
@@ -789,24 +789,28 @@ procedure TGoogleDrive.ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:
 var
   Response: TStringList;
   URL: string;
-  Params: string;
+  Params, pageToken: string;
   P: TJSONParser;
   I, K: integer;
   J, D, E, F: TJSONData;
-
+  nextpagetoken:boolean;
 begin
   Response := TStringList.Create;
   SetLength(A, 0);
-
+  nextpagetoken:=true;
+  pageToken:='';
   try
 
     if gOAuth2.EMail = '' then exit;
 
- if (customfields<>'') and (customfields<> '*') then
-  customfields := 'files(' + customfields + ')';
-
     gOAuth2.LogLine('Retrieving filelist ' + gOAuth2.EMail);
     gOAuth2.LogLine('Busy...');
+
+    if (customfields<>'') and (customfields<> '*') then
+    customfields := 'nextPageToken,files(' + customfields + ')';
+
+while (nextpagetoken) or (pageToken<>'') do begin;
+
 
     URL := 'https://www.googleapis.com/drive/v3/files';
     Params := 'access_token=' + gOAuth2.Access_token;
@@ -816,6 +820,7 @@ begin
 
     // list specific parent folder
     if parentid<>'' then Params := Params + '&q="' + parentid + '"%20in%20parents';
+    if pageToken<>'' then Params := Params + '&pageToken='+ pageToken;
 
     goauth2.LogLine(URL+'?'+params);
     if HttpGetText(URL + '?' + Params, Response) then
@@ -838,14 +843,20 @@ begin
 
 
           gOAuth2.LogLine('Parsing...');
+
+          // detecting pagetokens
+          pageToken:=RetrieveJSONValue(J,'nextPageToken');
+          nextpagetoken:=pageToken<>'';
+          //gOAuth2.logline(pageToken);
+
           D := J.FindPath('files');
 
           gOAuth2.DebugLine(format('%d items received', [D.Count]));
           for I := 0 to D.Count - 1 do
           begin
 
-            SetLength(A, I + 1);
-            A[I]:=ParseMetaData(D.Items[I],settings);
+            SetLength(A, length(A) + 1);
+            A[length(A)-1]:=ParseMetaData(D.Items[I],settings);
             Application.ProcessMessages;
           end;
           gOAuth2.LogLine('Done');
@@ -857,6 +868,7 @@ begin
         P.Free;
       end;
 
+    end;
     end;
 
   finally
