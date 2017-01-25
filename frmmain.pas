@@ -122,6 +122,7 @@ type
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
     procedure Button5Click(Sender: TObject);
+    procedure Button6Click(Sender: TObject);
     procedure ckHideFoldersClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -824,6 +825,14 @@ begin
   end;
 end;
 
+procedure TMainform.Button6Click(Sender: TObject);
+var parentid:string;
+begin
+  parentid:=Jdrive.GetGFileMetadata(JDrive.Files[0].fileid,[listparents],'parents').parents[0].id;
+  Jdrive.ListFiles(JDrive.Files,[],parentid);
+  FillDriveView2;
+end;
+
 procedure TMainform.ckHideFoldersClick(Sender: TObject);
 begin
   FillDriveGrid_old;
@@ -1002,8 +1011,6 @@ begin
 
   ListView1.Clear;
   Treeview1.Items.Clear;
-  Listview1.Visible:=false;
-  Treeview1.Visible:=false;
   Application.ProcessMessages; // update views
 
 
@@ -1021,15 +1028,15 @@ begin
   ImgLinkList := TStringList.Create;
 
 
-  ProgressBar2.Max := length(JDrive.Files);
+  ProgressBar2.Max := length(JDrive.Files)-1;
 
   AddToLog('Busy filling grid');
   try
-    for z:=0 to length(JDrive.Files)-1 do
+    for z:=1 to length(JDrive.Files)-1 do
     begin
       application.processmessages;
       ProgressBar2.Position := z;
-      if Jdrive.Files[z].isFolder then
+      {if Jdrive.Files[z].isFolder then
       begin
         if TreeView1.Items.Count = 0 then
         begin
@@ -1055,7 +1062,7 @@ begin
         end;
 
       end
-      else
+      else}
       begin
         ListItem := ListView1.Items.Add;
         (*
@@ -1098,8 +1105,6 @@ begin
   finally
     ProgressBar2.Position := 0;
     ImgLinkList.Free;
-  Listview1.Visible:=true;
-  Treeview1.Visible:=true;
 
   end;
 end;
@@ -1269,7 +1274,7 @@ end;
 procedure TMainform.ListView1DblClick(Sender: TObject);
 var
   ListItem: TListItem;
-  FileId: string;
+  FileId,mimeType: string;
   A: TGFileRevisions;
   Rev: integer;
 begin
@@ -1284,9 +1289,16 @@ begin
   FileId := '';
   if (ListView1.Selected.SubItems.Count > 4) then
     FileId := ListView1.Selected.SubItems.Strings[4];
+    mimeType := ListView1.Selected.SubItems.Strings[2];
 
   if FileId <> '' then
   begin
+   if mimeType='application/vnd.google-apps.folder' then begin
+    Jdrive.ListFiles(JDrive.Files,[],FileId);
+    FillDriveView2;
+    exit;
+    end
+    else begin
     A := JDrive.GetRevisions(FileId);
     Memo1.Lines.add(IntToStr(length(A)) + ' revisions found');
     if Length(A) > 0 then
@@ -1303,6 +1315,7 @@ begin
     begin
       ListItem := ListView2.Items.Add;
       ListItem.Caption := 'no revisions';
+    end;
     end;
   end
   else
