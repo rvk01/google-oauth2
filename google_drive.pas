@@ -67,7 +67,7 @@ type
   TGoogleDrive = class(TMemDataSet)
   private
     { private declarations }
-  const MaxResults: integer = 100;
+  const MaxResults: integer = 1000;
   var
     FgOAuth2: TGoogleOAuth2;
     LastErrorCode: string;
@@ -793,12 +793,12 @@ var
   P: TJSONParser;
   I, K: integer;
   J, D, E, F: TJSONData;
-  nextpagetoken:boolean;
 begin
   Response := TStringList.Create;
-  SetLength(A, 0);
-  nextpagetoken:=true;
+  SetLength(A, 1);
+  A[0].fileid:=parentid;
   pageToken:='';
+  K:=0;
   try
 
     if gOAuth2.EMail = '' then exit;
@@ -809,13 +809,11 @@ begin
     if (customfields<>'') and (customfields<> '*') then
     customfields := 'nextPageToken,files(' + customfields + ')';
 
-while (nextpagetoken) or (pageToken<>'') do begin;
-
-
+repeat;
     URL := 'https://www.googleapis.com/drive/v3/files';
     Params := 'access_token=' + gOAuth2.Access_token;
     Params := Params + '&pageSize=' + IntToStr(MaxResults);
-    Params := Params + '&orderBy=modifiedTime%20desc,name';
+    Params := Params + '&orderBy=folder,modifiedTime%20desc,name';
     Params := Params + '&fields='+customfields;
 
     // list specific parent folder
@@ -843,20 +841,16 @@ while (nextpagetoken) or (pageToken<>'') do begin;
 
 
           gOAuth2.LogLine('Parsing...');
-
-          // detecting pagetokens
           pageToken:=RetrieveJSONValue(J,'nextPageToken');
-          nextpagetoken:=pageToken<>'';
           //gOAuth2.logline(pageToken);
 
           D := J.FindPath('files');
-
+          K:=length(A);
+          SetLength(A,K+D.Count);
           gOAuth2.DebugLine(format('%d items received', [D.Count]));
           for I := 0 to D.Count - 1 do
           begin
-
-            SetLength(A, length(A) + 1);
-            A[length(A)-1]:=ParseMetaData(D.Items[I],settings);
+            A[K+I]:=ParseMetaData(D.Items[I],settings);
             Application.ProcessMessages;
           end;
           gOAuth2.LogLine('Done');
@@ -869,7 +863,7 @@ while (nextpagetoken) or (pageToken<>'') do begin;
       end;
 
     end;
-    end;
+until pageToken='';
 
   finally
     Response.Free;

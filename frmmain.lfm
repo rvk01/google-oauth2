@@ -776,7 +776,7 @@ object Mainform: TMainform
         Top = 48
         Width = 915
         Align = alClient
-        Caption = 'Panel3'
+        Caption = 'Loading ... please wait'
         ClientHeight = 627
         ClientWidth = 915
         TabOrder = 5
@@ -795,7 +795,7 @@ object Mainform: TMainform
             item
               AutoSize = True
               Caption = 'Date modified'
-              Width = 87
+              Width = 369
             end          
             item
               AutoSize = True
@@ -829,7 +829,7 @@ object Mainform: TMainform
             item
               AutoSize = True
               Caption = 'Revision'
-              Width = 507
+              Width = 909
             end          
             item
               AutoSize = True
@@ -859,6 +859,7 @@ object Mainform: TMainform
           Top = 6
           Width = 75
           Caption = '< GO BACK'
+          OnClick = Button6Click
           TabOrder = 2
         end
         object Button7: TButton
