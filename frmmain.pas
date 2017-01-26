@@ -828,9 +828,11 @@ end;
 procedure TMainform.Button6Click(Sender: TObject);
 var parentid:string;
 begin
-  parentid:=Jdrive.GetGFileMetadata(JDrive.Files[0].fileid,[listparents],'parents').parents[0].id;
+  (sender as tbutton).Enabled:=false;
+  parentid:=Jdrive.GetGFileMetadata(JDrive.CurrentFolder,[listparents],'parents').parents[0].id;
   Jdrive.ListFiles(JDrive.Files,[],parentid);
   FillDriveView2;
+  (sender as tbutton).Enabled:=true;
 end;
 
 procedure TMainform.ckHideFoldersClick(Sender: TObject);
@@ -1008,15 +1010,10 @@ begin
   //  MapId := Jdrive.FieldByName('FileId').AsString;
   //  StatusBar1.SimpleText := MapId;
   //end;
-
+  listview1.BeginUpdate;
   ListView1.Clear;
-  Treeview1.Items.Clear;
-  Application.ProcessMessages; // update views
-
-
   TreeView1.Images := ImageList1;
-
-  // ListView1.ViewStyle:=vsIcon;
+ // ListView1.ViewStyle:=vsIcon;
   ListView1.MultiSelect := True;
 
   ListView1.LargeImages := nil;
@@ -1032,46 +1029,20 @@ begin
 
   AddToLog('Busy filling grid');
   try
-    for z:=1 to length(JDrive.Files)-1 do
+    for z:=0 to length(JDrive.Files)-1 do
     begin
       application.processmessages;
       ProgressBar2.Position := z;
-      {if Jdrive.Files[z].isFolder then
-      begin
-        if TreeView1.Items.Count = 0 then
-        begin
-          Treeview1.Items.Add(nil, 'Google Drive');
-        end;
-        TreeNode := Treeview1.Items.AddChild(Treeview1.Items.GetFirstNode, Jdrive.Files[z].name);
-
-        IconLink := Jdrive.Files[z].iconLink;
-        if false and (IconLink <> '') then
-        begin
-          TreeNode.ImageIndex := ImgLinkList.IndexOf(IconLink);
-          if TreeNode.ImageIndex = -1 then
-          begin
-            Img := TImage.Create(nil);
-            try
-              LoadImageFromWeb(Img, IconLink);
-              TreeNode.ImageIndex := ImageList1.Add(Img.Picture.Bitmap, nil);
-              ImgLinkList.Add(IconLink);
-            finally
-              Img.Free;
-            end;
-          end;
-        end;
-
-      end
-      else}
       begin
         ListItem := ListView1.Items.Add;
+
         (*
         Load icon 90x90 to a stringlist
         Convert them to 16x16
         and load from internet in a thread
         *)
         IconLink := Jdrive.Files[z].iconLink;
-        if true and (IconLink <> '') then
+        if (IconLink <> '') then
         begin
           ListItem.ImageIndex := ImgLinkList.IndexOf(IconLink);
           if ListItem.ImageIndex = -1 then
@@ -1095,14 +1066,13 @@ begin
         ListItem.SubItems.Add(Jdrive.Files[z].fileid);
 
       end;
-
-//      Jdrive.Next;
     end;
 
     AddToLog('Done filling grid');
-    TreeView1.FullExpand;
+
 
   finally
+    listview1.EndUpdate;
     ProgressBar2.Position := 0;
     ImgLinkList.Free;
 
