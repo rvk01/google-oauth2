@@ -67,8 +67,10 @@ type
   TGoogleDrive = class(TMemDataSet)
   private
     { private declarations }
-  const MaxResults: integer = 1000;
+  const MaxResults: integer = 50;
   var
+
+    CurFolder:string;
     FgOAuth2: TGoogleOAuth2;
     LastErrorCode: string;
     LastErrorMessage: string;
@@ -96,6 +98,7 @@ type
     function GetUploadURI(const URL, auth, FileN, Description: string;
       const Data: TStream; parameters: string = ''; fileid: string = ''): string;
     property gOAuth2: TGoogleOAuth2 read FgOAuth2 write FgOAuth2;
+    property CurrentFolder:string read CurFolder write CurFolder;
     function UploadResumableFile(const URL: string; const Data: TStream): string;
     property Progress: TProgressBar read Fprogress write Fprogress;
    property GFiles: TGFiles read Files write Files;
@@ -710,7 +713,14 @@ begin
        begin;
        setlength(parents,0);
        F := A.FindPath('parents');
-         for K:=0 to F.Count-1 do
+       if not assigned(F) then
+       begin
+       // root case
+       setlength(parents,1);
+       parents[0].id:='root';
+       end
+       else
+       for K:=0 to F.Count-1 do
              begin
              setlength(parents,K+1);
                with parents[K] do
@@ -748,7 +758,8 @@ begin
     Params := 'access_token=' + gOAuth2.Access_token;
     if HttpGetText(URL + '?' + Params+'&fields='+customfields, Response) then
     begin
-      P := TJSONParser.Create(Response.Text);
+    gOauth2.logline(URL + '?' + Params+'&fields='+customfields);
+    P := TJSONParser.Create(Response.Text);
 try
         J := P.Parse;
 
@@ -774,6 +785,7 @@ end;
         if assigned(J) then
         J.Free;
         P.Free;
+        Response.Free;
       end;
     end;
   end;
@@ -795,8 +807,8 @@ var
   J, D, E, F: TJSONData;
 begin
   Response := TStringList.Create;
-  SetLength(A, 1);
-  A[0].fileid:=parentid;
+  SetLength(A, 0);
+  currentFolder:=parentid;
   pageToken:='';
   K:=0;
   try
