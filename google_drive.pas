@@ -716,20 +716,14 @@ begin
        if not assigned(F) then
        begin
        // root case
-       setlength(parents,1);
-       parents[0].id:='root';
+          setlength(parents,1);
+          parents[0].id:='root';
        end
        else
        for K:=0 to F.Count-1 do
              begin
              setlength(parents,K+1);
-               with parents[K] do
-               begin
-                 id:= (F.Items[K]).AsString;
-                 {isroot:=lowercase(RetrieveJSONValue(F.Items[K], 'isRoot'))='true';
-                 if not isroot then gOAuth2.LogLine(inttostr(K+1)+' > '+name+' ['+id+']')
-                 else gOauth2.logline(inttostr(K+1)+' > '+name+' [root]');}
-               end;
+               with parents[K] do id:= (F.Items[K]).AsString;
              end;
        end;
   end;
@@ -743,12 +737,16 @@ var
   P: TJSONParser;
   I, K: integer;
   A, J, D, E, F: TJSONData;
+  HTTP:THTTPSend;
 begin
   Response := TStringList.Create;
 
+  result:=default(TGFile);
+  with result do begin
+  setlength(parents,1);
+  parents[0].id:='';
+  end;
 
-
-    if id='' then exit;
     if gOAuth2.EMail = '' then exit;
 
     gOAuth2.LogLine('Retrieving metadata ' + gOAuth2.EMail);
@@ -756,15 +754,24 @@ begin
 
     URL := 'https://www.googleapis.com/drive/v3/files/'+id;
     Params := 'access_token=' + gOAuth2.Access_token;
-    if HttpGetText(URL + '?' + Params+'&fields='+customfields, Response) then
+    HTTP:=THTTPSend.Create;
+    if HTTP.HTTPMethod('GET',URL + '?' + Params+'&fields='+customfields) then//HttpGetText(URL + '?' + Params+'&fields='+customfields, Response) then
     begin
+
+    if HTTP.ResultCode=401 then begin;
+    gOAuth2.LogLine('Session expired, please connect again');
+
+    end
+    else
+    begin
+    Response.LoadFromStream(HTTP.Document);
     gOauth2.logline(URL + '?' + Params+'&fields='+customfields);
     P := TJSONParser.Create(Response.Text);
-try
+      try
         J := P.Parse;
 
-if Assigned(J) then
-begin
+        if Assigned(J) then
+        begin
 
           A := J.FindPath('error');
           if assigned(A) then
@@ -779,15 +786,19 @@ begin
           A := J;
           Result:=ParseMetaData(A,settings);
 
-end;
+        end;
 
      finally
         if assigned(J) then
         J.Free;
         P.Free;
-        Response.Free;
       end;
     end;
+
+    Response.Free;
+
+    end;
+HTTP.Free;
   end;
 
 
@@ -805,9 +816,19 @@ var
   P: TJSONParser;
   I, K: integer;
   J, D, E, F: TJSONData;
+  HTTP:THTTPSend;
 begin
   Response := TStringList.Create;
-  SetLength(A, 0);
+
+  SetLength(A, 1);
+  with A[0] do begin
+  fileid:=GetGFileMetadata(parentid,[listparents],'parents').parents[0].id;
+  name:='( go back )';
+  iconLink:='https://ssl.gstatic.com/docs/doclist/images/icon_11_collection_list_1.png';
+  mimeType:='application/vnd.google-apps.folder';
+  end;
+
+
   currentFolder:=parentid;
   pageToken:='';
   K:=0;
@@ -821,7 +842,7 @@ begin
     if (customfields<>'') and (customfields<> '*') then
     customfields := 'nextPageToken,files(' + customfields + ')';
 
-repeat;
+    repeat;
     URL := 'https://www.googleapis.com/drive/v3/files';
     Params := 'access_token=' + gOAuth2.Access_token;
     Params := Params + '&pageSize=' + IntToStr(MaxResults);
@@ -833,8 +854,17 @@ repeat;
     if pageToken<>'' then Params := Params + '&pageToken='+ pageToken;
 
     goauth2.LogLine(URL+'?'+params);
-    if HttpGetText(URL + '?' + Params, Response) then
+    HTTP:=THTTPSend.Create;
+    if HTTP.HTTPMethod('GET',URL + '?' + Params) then//HttpGetText(URL + '?' + Params, Response) then
     begin
+     goauth2.Logline(inttostr(HTTP.ResultCode));
+     if HTTP.ResultCode=401 then
+     begin;
+     goauth2.Logline('Session expired');
+     end
+     else
+     begin
+      Response.LoadFromStream(HTTP.Document);
       P := TJSONParser.Create(Response.Text);
       try
         J := P.Parse;
@@ -873,8 +903,11 @@ repeat;
         J.Free;
         P.Free;
       end;
-
+     end;
     end;
+
+    HTTP.Free;
+
 until pageToken='';
 
   finally
