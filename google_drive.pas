@@ -741,11 +741,11 @@ var
 begin
   Response := TStringList.Create;
 
-  result:=default(TGFile);
+ { result:=default(TGFile);
   with result do begin
   setlength(parents,1);
   parents[0].id:='';
-  end;
+  end;  }
 
     if gOAuth2.EMail = '' then exit;
 
@@ -817,16 +817,26 @@ var
   I, K: integer;
   J, D, E, F: TJSONData;
   HTTP:THTTPSend;
+  folderid:string;
 begin
   Response := TStringList.Create;
 
+folderid:=GetGFileMetadata(parentid,[listparents],'parents').parents[0].id;
+if folderid<>'root' then
+   begin;
   SetLength(A, 1);
-  with A[0] do begin
-  fileid:=GetGFileMetadata(parentid,[listparents],'parents').parents[0].id;
+  with A[0] do
+       begin
+  fileid:=folderid;
   name:='( go back )';
   iconLink:='https://ssl.gstatic.com/docs/doclist/images/icon_11_collection_list_1.png';
   mimeType:='application/vnd.google-apps.folder';
-  end;
+       end;
+   end
+else
+    begin
+    Setlength(A,0);
+    end;
 
 
   currentFolder:=parentid;
