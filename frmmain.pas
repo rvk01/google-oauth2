@@ -1234,7 +1234,7 @@ begin
     end
   else
     begin
-    JDrive.ListFiles(JDrive.Files,[],'root','name,mimeType,id,size,modifiedTime,iconLink');
+    JDrive.ListFiles(JDrive.Files,[showpreviousfolder],'root','name,mimeType,id,size,modifiedTime,iconLink');
     FillDriveView2;
     end;
 
@@ -1264,7 +1264,7 @@ begin
   if FileId <> '' then
   begin
    if mimeType='application/vnd.google-apps.folder' then begin
-    Jdrive.ListFiles(JDrive.Files,[],FileId);
+    Jdrive.ListFiles(JDrive.Files,[showpreviousfolder],FileId);
     FillDriveView2;
     exit;
     end

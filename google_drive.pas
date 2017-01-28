@@ -13,7 +13,7 @@ uses
 
 type apiver=(v2,v3);
 
-type listsetting=(listrevisions,listparents);
+type listsetting=(listrevisions,listparents,showpreviousfolder);
 type Tlistsettings = set of listsetting;
 
 type TGFileParent = packed record
@@ -67,7 +67,7 @@ type
   TGoogleDrive = class(TMemDataSet)
   private
     { private declarations }
-  const MaxResults: integer = 50;
+  const MaxResults: integer = 500;
   var
 
     CurFolder:string;
@@ -114,7 +114,7 @@ type
     function DeleteAllGFileRevisions(var A: TGFileRevisions): boolean;
 
     function GetGFileMetadata(id:string;settings:TListSettings;customfields:string='*'):TGFile;
-    procedure ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='';customfields:string='*');
+    procedure ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='root';customfields:string='*');
     procedure FillGFileMetadata(var A:TGFile;settings:Tlistsettings);
 
     //function GetRootFolderId:string;
@@ -156,8 +156,6 @@ begin
 
     if not HTTP.HTTPMethod('PUT', URL) then exit;
     Result := 'pre - ' + #13 + HTTP.Headers.Text + #13 + #13 + HTTP.ResultString;
-    // for any errors
-    // Mainform.Memo2.Lines.Add('@@@'+Result);
     From := 0;
     if HTTP.ResultCode in [200, 201] then
     begin
@@ -741,11 +739,11 @@ var
 begin
   Response := TStringList.Create;
 
- { result:=default(TGFile);
+  result:=default(TGFile);
   with result do begin
   setlength(parents,1);
   parents[0].id:='';
-  end;  }
+  end;
 
     if gOAuth2.EMail = '' then exit;
 
@@ -808,7 +806,7 @@ if A.fileid='' then exit;
 A:=GetGFileMetadata(A.fileid,settings);
 end;
 
-procedure TGoogleDrive.ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='';customfields:string='*');
+procedure TGoogleDrive.ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='root';customfields:string='*');
 var
   Response: TStringList;
   URL: string;
@@ -817,27 +815,31 @@ var
   I, K: integer;
   J, D, E, F: TJSONData;
   HTTP:THTTPSend;
-  folderid:string;
-begin
+  folderid,foldername:string;
+  prevfolder:TGFile;
+  begin
   Response := TStringList.Create;
 
-folderid:=GetGFileMetadata(parentid,[listparents],'parents').parents[0].id;
+Setlength(A,0);
+
+if showpreviousfolder in settings then begin
+GOauth2.LogLine('Retrieving parent''s informations');
+PrevFolder:=GetGFileMetadata(parentid,[listparents],'name,parents');
+  folderid:=PrevFolder.parents[0].id;
+  foldername:=PrevFolder.name;
+
 if folderid<>'root' then
-   begin;
+  begin;
   SetLength(A, 1);
   with A[0] do
        begin
   fileid:=folderid;
-  name:='( go back )';
+  name:=''+foldername+' : Double click here to go back';
   iconLink:='https://ssl.gstatic.com/docs/doclist/images/icon_11_collection_list_1.png';
   mimeType:='application/vnd.google-apps.folder';
        end;
-   end
-else
-    begin
-    Setlength(A,0);
-    end;
-
+   end;
+end;
 
   currentFolder:=parentid;
   pageToken:='';
