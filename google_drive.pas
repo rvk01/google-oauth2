@@ -13,7 +13,11 @@ uses
 
 type apiver=(v2,v3);
 
-type Tlistsetting=(listrevisions,listparents,showpreviousfolder);
+type TUploadSetting = (RenameFile, KeepForever);
+type TUploadSettings = set of TUploadSetting;
+
+
+type Tlistsetting = (listrevisions, listparents, showpreviousfolder);
 type Tlistsettings = set of Tlistsetting;
 
 type TGFileParent = packed record
@@ -96,7 +100,7 @@ type
     procedure Populate(aFilter: string = '');
     function DownloadFile(id, TargetFile: string; revisionid: string = ''): boolean;
     function GetUploadURI(const URL, auth, FileN, Description: string;
-      const Data: TStream; parameters: string = ''; fileid: string = ''): string;
+      const Data: TStream; parameters: string = ''; fileid: string = ''; settings : TuploadSettings = [] ): string;
     property gOAuth2: TGoogleOAuth2 read FgOAuth2 write FgOAuth2;
     property CurrentFolder:string read CurFolder write CurFolder;
     function UploadResumableFile(const URL: string; const Data: TStream): string;
@@ -236,7 +240,7 @@ end;
 
 
 function TGoogleDrive.GetUploadURI(const URL, auth, FileN, Description: string;
-  const Data: TStream; parameters: string = ''; fileid: string = ''): string;
+  const Data: TStream; parameters: string = ''; fileid: string = ''; settings : TuploadSettings = [] ): string;
 var
   HTTP: THTTPSend;
   Method, URLM: string;
@@ -244,27 +248,45 @@ var
   i: integer;
 begin
   Result := '';
-  Method := 'POST';
-  URLM := URL;
-  rev:='name';
+
+
+
   if fileid <> '' then
   begin
     Method := 'PATCH';
     URLM := URL + '/' + fileid;
     rev:='originalFilename';
+  end
+  else
+  begin
+   Method := 'POST';
+   URLM := URL;
+   rev:='name';
   end;
+
+  s := '{' + CRLF + '"' + rev + '": "' + ExtractFileName(FileN) + '",' + CRLF;
+
+  if (Renamefile in settings) and (fileid <> '') then
+  s :=  s +'"name": "' + ExtractFileName(FileN) + '",' + CRLF;
+
+{  if (KeepForever in settings) and (fileid <> '') then
+  s :=  s +'"keepForever": "true",' + CRLF;}
+
+  s :=  s +'"description": "' + Description + '"' + CRLF + '}';
 
   HTTP := THTTPSend.Create;
   try
     HTTP.MimeType := 'application/json; charset=UTF-8';
-    s := Format('{' + CRLF + '"%s": "%s",' + CRLF + '"description": "%s"' +
-      CRLF + '}', [rev, ExtractFileName(FileN), Description]);
     WriteStrToStream(HTTP.Document, ansistring(s));
     HTTP.Headers.Add(Format('X-Upload-Content-Length: %d', [Data.Size]));
 
     HTTP.Headers.Add('Authorization: Bearer ' + auth);
 
-    if not HTTP.HTTPMethod(Method, URLM + '?' + parameters) then
+  if (KeepForever in settings) then parameters:=parameters+'&keepRevisionForever=True';
+
+  //  LogMemo.Lines.Add( URLM + '?' + parameters);
+
+  if not HTTP.HTTPMethod(Method, URLM + '?' + parameters) then
     begin
       LogMemo.Lines.Add('Error retrieving URI');
       exit;
