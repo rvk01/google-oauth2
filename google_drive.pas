@@ -13,12 +13,11 @@ uses
 
 type apiver=(v2,v3);
 
-type listsetting=(listrevisions,listparents,showpreviousfolder);
-type Tlistsettings = set of listsetting;
+type Tlistsetting=(listrevisions,listparents,showpreviousfolder);
+type Tlistsettings = set of Tlistsetting;
 
 type TGFileParent = packed record
     id: string;
-//isRoot: boolean;
 end;
 
 type TGFileParents = array of TGFileParent;
@@ -27,6 +26,7 @@ type TGFileParents = array of TGFileParent;
 type TGFileRevision = packed record
     id: string;
     revisionid: string;
+    size: string;
     modifiedDate: string;
     mimetype: string;
     originalFileName: string;
@@ -101,7 +101,7 @@ type
     property CurrentFolder:string read CurFolder write CurFolder;
     function UploadResumableFile(const URL: string; const Data: TStream): string;
     property Progress: TProgressBar read Fprogress write Fprogress;
-   property GFiles: TGFiles read Files write Files;
+    property GFiles: TGFiles read Files write Files;
     property LogMemo: TMemo read FLogMemo write FLogMemo;
     property DebugMemo: TMemo read FDebugMemo write FDebugMemo;
     procedure CreateFolder(foldername: string; parentid: string = '');
@@ -117,9 +117,11 @@ type
     procedure ListFiles(var A: TGFiles;settings:Tlistsettings;parentid:string='root';customfields:string='*');
     procedure FillGFileMetadata(var A:TGFile;settings:Tlistsettings);
 
-    //function GetRootFolderId:string;
-  function AboutGdrive(version:apiver):TGoogleDriveInformation;
-  published
+  //function GetRootFolderId:string;
+    function AboutGdrive(version:apiver):TGoogleDriveInformation;
+
+    published
+
   end;
 
 
@@ -238,30 +240,33 @@ function TGoogleDrive.GetUploadURI(const URL, auth, FileN, Description: string;
 var
   HTTP: THTTPSend;
   Method, URLM: string;
-  s: string;
+  s, rev: string;
   i: integer;
 begin
   Result := '';
   Method := 'POST';
   URLM := URL;
+  rev:='name';
   if fileid <> '' then
   begin
     Method := 'PATCH';
     URLM := URL + '/' + fileid;
+    rev:='originalFilename';
   end;
 
   HTTP := THTTPSend.Create;
   try
-    s := Format('{' + CRLF + '"name": "%s",' + CRLF + '"description": "%s"' +
-      CRLF + '}', [ExtractFileName(FileN), Description]);
-    WriteStrToStream(HTTP.Document, ansistring(s));
-    HTTP.Headers.Add('Authorization: Bearer ' + auth);
-    HTTP.Headers.Add(Format('X-Upload-Content-Length: %d', [Data.Size]));
     HTTP.MimeType := 'application/json; charset=UTF-8';
+    s := Format('{' + CRLF + '"%s": "%s",' + CRLF + '"description": "%s"' +
+      CRLF + '}', [rev, ExtractFileName(FileN), Description]);
+    WriteStrToStream(HTTP.Document, ansistring(s));
+    HTTP.Headers.Add(Format('X-Upload-Content-Length: %d', [Data.Size]));
+
+    HTTP.Headers.Add('Authorization: Bearer ' + auth);
 
     if not HTTP.HTTPMethod(Method, URLM + '?' + parameters) then
     begin
-      LogMemo.Lines.Add('Error');
+      LogMemo.Lines.Add('Error retrieving URI');
       exit;
     end;
     Result := HTTP.ResultString; // for any errors
@@ -1143,6 +1148,7 @@ begin
               modifiedDate := RetrieveJSONValue(D.Items[I], 'modifiedDate');
               mimetype := RetrieveJSONValue(D.Items[I], 'mimeType');
               originalFileName := RetrieveJSONValue(D.Items[I], 'originalFilename');
+              size := RetrieveJSONValue(D.Items[I], 'size');
               Application.ProcessMessages;
             end;
           end;
