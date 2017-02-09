@@ -98,6 +98,10 @@ type
     function GetSizeFromHeader(Header: string): integer;
     procedure UpStatus(Sender: TObject; Reason: THookSocketReason; const Value: string);
     function ParseMetadata(A:TJSONData;settings:TlistSettings):TGFile;
+
+    Function ExtractQueryProperties:string;
+    Function ExtractBodyProperties:string;
+
     protected
     { protected declarations }
   public
@@ -283,6 +287,40 @@ begin
 end;
 
 
+Function TGoogleDrive.ExtractBodyProperties:string;
+var i : integer;
+begin
+result:= '{' + CRLF + '}';
+if length(CustomBodyProperties)>0 then
+   begin
+   result  := '{' + CRLF;
+   for i:=0 to length(CustomBodyProperties)-1 do
+       begin;
+          result := result + '"' + CustomBodyProperties[i].name + '": "' + CustomBodyProperties[i].value + '"';
+          if i<length(CustomBodyProperties)-1 then result := result + ',';
+          result := result + CRLF;
+   end;
+   result :=  result + '}';
+   end;
+end;
+
+Function TGoogleDrive.ExtractQueryProperties:string;
+var i : integer;
+begin
+result:='';
+if length(CustomQueryProperties)>0 then
+begin
+     result := '?';
+     for i:=0 to length(CustomQueryProperties)-1 do
+         begin
+     result := result + CustomQueryProperties[i].name + '=' + CustomQueryProperties[i].value;
+     if i<length(CustomQueryProperties)-1 then result := result + '&';
+         end;
+end;
+end;
+
+
+
 Function TGoogleDrive.SetFileProperties(id : string):string;
 var
   HTTP: THTTPSend;
@@ -302,25 +340,9 @@ begin
   URL := MetadataURL + '/' + id;
 
   // Query Parameters
-  if length(CustomQueryProperties)>0 then
-  begin
-       URL := URL + '?';
-       for i:=0 to length(CustomQueryProperties)-1 do
-           begin
-       URL := URL + CustomQueryProperties[i].name + '=' + CustomQueryProperties[i].value;
-       if i<length(CustomQueryProperties)-1 then URL := URL + '&';
-           end;
-  end;
-
+  URL := URL + ExtractQueryProperties;
   // Body parameters
-  s := '{' + CRLF;
-  for i:=0 to length(CustomBodyProperties)-1 do
-  begin;
-  s := s + '"' + CustomBodyProperties[i].name + '": "' + CustomBodyProperties[i].value + '"';
-  if i<length(CustomBodyProperties)-1 then s := s + ',';
-  s := s + CRLF;
-  end;
-  s :=  s + '}';
+  s:= ExtractBodyProperties;
 
   HTTP := THTTPSend.Create;
   try
@@ -366,29 +388,34 @@ begin
    rev:='name';
   end;
 
-  s := '{' + CRLF + '"' + rev + '": "' + ExtractFileName(FileN) + '",' + CRLF;
+  ClearAllCustomProperties;
+  AddCustomProperty(CustomBodyProperties,rev,ExtractFileName(FileN));
 
   if (Renamefile in settings) and (fileid <> '') then
-  s :=  s +'"name": "' + ExtractFileName(FileN) + '",' + CRLF;
+  AddCustomProperty(CustomBodyProperties,'name',ExtractFileName(FileN));
 
-{  if (KeepForever in settings) and (fileid <> '') then
-  s :=  s +'"keepForever": "true",' + CRLF;}
+  AddCustomProperty(CustomBodyProperties,'description',Description);
 
-  s :=  s +'"description": "' + Description + '"' + CRLF + '}';
+  s := ExtractBodyProperties;
 
   HTTP := THTTPSend.Create;
   try
     HTTP.MimeType := 'application/json; charset=UTF-8';
-    WriteStrToStream(HTTP.Document, ansistring(s));
-    HTTP.Headers.Add(Format('X-Upload-Content-Length: %d', [Data.Size]));
 
+    WriteStrToStream(HTTP.Document, ansistring(s));
+
+    HTTP.Headers.Add(Format('X-Upload-Content-Length: %d', [Data.Size]));
     HTTP.Headers.Add('Authorization: Bearer ' + auth);
 
-  if (KeepForever in settings) then parameters:=parameters+'&keepRevisionForever=True';
+    AddCustomProperty(CustomQueryProperties,'uploadType','resumable');
+    if (KeepForever in settings) then
+    AddCustomProperty(CustomQueryProperties,'keepRevisionForever','true');
 
-  //  LogMemo.Lines.Add( URLM + '?' + parameters);
+    parameters := ExtractQueryProperties;
 
-  if not HTTP.HTTPMethod(Method, URLM + '?' + parameters) then
+  LogMemo.Lines.Add(s + chr(13) + URLM + '[' + parameters + ']');
+
+  if not HTTP.HTTPMethod(Method, URLM + parameters) then
     begin
       LogMemo.Lines.Add('Error retrieving URI');
       exit;
