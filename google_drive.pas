@@ -11,7 +11,10 @@ uses
   httpsend, blcksock, typinfo, ComCtrls, synautil, StdCtrls;
 
 
-type apiver=(v2,v3);
+type apiver = (v2, v3);
+
+const  UploadURL = 'https://www.googleapis.com/upload/drive/v3/files';
+const  MetaDataURL = 'https://www.googleapis.com/drive/v3/files';
 
 type TUploadSetting = (RenameFile, KeepForever);
 type TUploadSettings = set of TUploadSetting;
@@ -26,12 +29,18 @@ end;
 
 type TGFileParents = array of TGFileParent;
 
+type TCustomProperty = packed record
+     name : string;
+     value : string;
+end;
+
+type TCustomProperties = array of TCustomProperty;
 
 type TGFileRevision = packed record
     id: string;
     revisionid: string;
     size: string;
-    modifiedDate: string;
+    modifiedTime: string;
     mimetype: string;
     originalFileName: string;
   end;
@@ -93,14 +102,21 @@ type
     { protected declarations }
   public
     { public declarations }
+
   var Files: TGFiles;
+
+  var CustomBodyProperties : TCustomProperties;
+  var CustomQueryProperties : TCustomProperties;
+
     constructor Create(AOwner: TComponent; client_id, client_secret: string); overload;
     destructor Destroy; override;
 
     procedure Populate(aFilter: string = '');
     function DownloadFile(id, TargetFile: string; revisionid: string = ''): boolean;
+
     function GetUploadURI(const URL, auth, FileN, Description: string;
       const Data: TStream; parameters: string = ''; fileid: string = ''; settings : TuploadSettings = [] ): string;
+
     property gOAuth2: TGoogleOAuth2 read FgOAuth2 write FgOAuth2;
     property CurrentFolder:string read CurFolder write CurFolder;
     function UploadResumableFile(const URL: string; const Data: TStream): string;
@@ -109,6 +125,14 @@ type
     property LogMemo: TMemo read FLogMemo write FLogMemo;
     property DebugMemo: TMemo read FDebugMemo write FDebugMemo;
     procedure CreateFolder(foldername: string; parentid: string = '');
+
+
+    Function SetFileProperties(id : string):string;
+    Procedure ClearAllCustomProperties;
+    Procedure AddCustomProperty(var customproperty:TCustomproperties;cname,cvalue:string);
+    // SetGFileProp
+    // SetGFileRevisionProp
+
 
     function GetRevisions(fileid: string): TGFileRevisions;
     procedure GetGFileRevisions(var A: TGFile);
@@ -131,6 +155,26 @@ type
 
 implementation
 
+
+Procedure TGoogleDrive.ClearAllCustomProperties;
+begin
+setlength(CustomBodyProperties,0);
+setlength(CustomQueryProperties,0);
+end;
+
+Procedure TGoogleDrive.AddCustomProperty(var customproperty:TCustomproperties;cname,cvalue:string);
+var i : integer;
+begin
+
+ i:=length(CustomProperty);
+ Setlength(CustomProperty, i + 1);
+
+with CustomProperty[i] do
+     begin
+     name:=cname;
+     value:=cvalue;
+     end
+end;
 
 procedure TGoogleDrive.UpStatus(Sender: TObject; Reason: THookSocketReason;
   const Value: string);
@@ -238,6 +282,64 @@ begin
 
 end;
 
+
+Function TGoogleDrive.SetFileProperties(id : string):string;
+var
+  HTTP: THTTPSend;
+  s, p: string;
+  URL : string;
+  i: integer;
+begin
+
+  Result := '';
+
+  if (length(CustomBodyProperties)=0) and (length(CustomQueryProperties)=0) then
+  begin
+  result:='No properties to set, can''t continue';
+  exit;
+  end;
+
+  URL := MetadataURL + '/' + id;
+
+  // Query Parameters
+  if length(CustomQueryProperties)>0 then
+  begin
+       URL := URL + '?';
+       for i:=0 to length(CustomQueryProperties)-1 do
+           begin
+       URL := URL + CustomQueryProperties[i].name + '=' + CustomQueryProperties[i].value;
+       if i<length(CustomQueryProperties)-1 then URL := URL + '&';
+           end;
+  end;
+
+  // Body parameters
+  s := '{' + CRLF;
+  for i:=0 to length(CustomBodyProperties)-1 do
+  begin;
+  s := s + '"' + CustomBodyProperties[i].name + '": "' + CustomBodyProperties[i].value + '"';
+  if i<length(CustomBodyProperties)-1 then s := s + ',';
+  s := s + CRLF;
+  end;
+  s :=  s + '}';
+
+  HTTP := THTTPSend.Create;
+  try
+    HTTP.MimeType := 'application/json; charset=UTF-8';
+    WriteStrToStream(HTTP.Document, ansistring(s));
+    HTTP.Headers.Add('Authorization: Bearer ' + gOAuth2.Access_token);
+
+  LogMemo.Lines.Add(s + #13 + URL);
+  if not HTTP.HTTPMethod('PATCH', URL) then
+    begin
+      LogMemo.Lines.Add('Error setting parameters');
+      exit;
+    end;
+    Result := HTTP.ResultString;
+    LogMemo.Lines.Add( Result);
+  finally
+    HTTP.Free;
+  end;
+end;
 
 function TGoogleDrive.GetUploadURI(const URL, auth, FileN, Description: string;
   const Data: TStream; parameters: string = ''; fileid: string = ''; settings : TuploadSettings = [] ): string;
@@ -1167,7 +1269,7 @@ begin
             begin
               id := fileid;
               revisionid := RetrieveJSONValue(D.Items[I], 'id');
-              modifiedDate := RetrieveJSONValue(D.Items[I], 'modifiedDate');
+              modifiedTime := RetrieveJSONValue(D.Items[I], 'modifiedTime');
               mimetype := RetrieveJSONValue(D.Items[I], 'mimeType');
               originalFileName := RetrieveJSONValue(D.Items[I], 'originalFilename');
               size := RetrieveJSONValue(D.Items[I], 'size');
