@@ -10,6 +10,44 @@ uses
   Classes, SysUtils, DB, Forms, google_oauth2, fpjson, jsonparser, memds,
   httpsend, blcksock, typinfo, ComCtrls, synautil, StdCtrls;
 
+type TGDExport = record
+    Description : string;
+    MimeType : string;
+end;
+
+const GoogleDocumentsExport : array [0..5] of TGDExport =
+    (
+    (Description:'HTML';MimeType:'text/html'),
+    (Description:'Plain Text';MimeType:'text/plain'),
+    (Description:'Rich text';MimeType:'application/rtf'),
+    (Description:'Open Office';MimeType:'application/vnd.oasis.opendocument.text'),
+    (Description:'PDF';MimeType:'application/pdf'),
+    (Description:'MS Word document';MimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    ) ;
+
+const GoogleSpreadsheetsExport : array [0..3] of TGDExport =
+    (
+    (Description:'MS Excel';MimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+    (Description:'Open Office sheet';MimeType:'application/x-vnd.oasis.opendocument.spreadsheet'),
+    (Description:'PDF';MimeType:'application/pdf'),
+    (Description:'CSV (first sheet only)';MimeType:'text/csv')
+    ) ;
+
+const GoogleDrawingsExport : array [0..3] of TGDExport =
+    (
+    (Description:'JPEG';MimeType:'image/jpeg'),
+    (Description:'PNG';MimeType:'image/png'),
+    (Description:'SVG';MimeType:'image/svg+xml'),
+    (Description:'PDF';MimeType:'application/pdf')
+    ) ;
+
+
+const GooglePresentationsExport : array [0..2] of TGDExport =
+    (
+    (Description:'MS PowerPoint';MimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'),
+    (Description:'Plain text';MimeType:'text/plain'),
+    (Description:'PDF';MimeType:'application/pdf')
+    ) ;
 
 type apiver = (v2, v3);
 
@@ -82,7 +120,7 @@ type
   TGoogleDrive = class(TMemDataSet)
   private
     { private declarations }
-  const MaxResults: integer = 5;
+  const MaxResults: integer = 500;
   var
 
     CurFolder:string;
@@ -118,20 +156,19 @@ type
     destructor Destroy; override;
 
     procedure Populate(aFilter: string = '');
-    function DownloadFile(id, TargetFile: string; revisionid: string = ''): boolean;
+    function DownloadFile(id, TargetFile: string; revisionid: string = ''; exportmimetype : string = ''): boolean;
 
-    function GetUploadURI(const URL, auth, FileN, Description: string;
-      const Data: TStream; parameters: string = ''; fileid: string = ''; settings : TuploadSettings = [] ): string;
+    function GetUploadURI(const URL, auth, FileN, Description: string;const Data: TStream; parameters: string = ''; fileid: string = ''; settings : TuploadSettings = [] ): string;
 
     property gOAuth2: TGoogleOAuth2 read FgOAuth2 write FgOAuth2;
     property CurrentFolder:string read CurFolder write CurFolder;
-    function UploadResumableFile(const URL: string; const Data: TStream): string;
     property Progress: TProgressBar read Fprogress write Fprogress;
     property GFiles: TGFiles read Files write Files;
     property LogMemo: TMemo read FLogMemo write FLogMemo;
     property DebugMemo: TMemo read FDebugMemo write FDebugMemo;
-    procedure CreateFolder(foldername: string; parentid: string = '');
 
+    function UploadResumableFile(const URL: string; const Data: TStream): string;
+    procedure CreateFolder(foldername: string; parentid: string = '');
 
     Procedure ClearAllCustomProperties;
     Procedure AddCustomProperty(var customproperty:TCustomproperties;cname,cvalue:string; PropAs : TCustomPropertyAs = aselse);
@@ -355,7 +392,7 @@ begin
     WriteStrToStream(HTTP.Document, ansistring(s));
     HTTP.Headers.Add('Authorization: Bearer ' + gOAuth2.Access_token);
 
-//  LogMemo.Lines.Add(s + #13 + URL);
+  LogMemo.Lines.Add(s + #13 + URL);
   if not HTTP.HTTPMethod('PATCH', URL) then
     begin
       LogMemo.Lines.Add('Error setting parameters');
@@ -451,7 +488,7 @@ begin
 end;
 
 
-function TGoogleDrive.DownloadFile(id, TargetFile: string; revisionid: string = ''): boolean;
+function TGoogleDrive.DownloadFile(id, TargetFile: string; revisionid: string = ''; exportmimetype : string = ''): boolean;
 var
   HTTPGetResult: boolean;
   URL, URLM: string;
@@ -466,12 +503,24 @@ begin
     Progress.Max := 100;
     DownHTTP.Sock.OnStatus := @DownStatus;
     LogMemo.Lines.Add('Downloading file...');
-    URLM := '?alt=media';
-    if revisionid <> '' then URLM := '/revisions/' + revisionid + URLM;
-    URL := 'https://www.googleapis.com/drive/v3/files/' + id + URLM;
+
+    URL := MetadataURL + '/' + id;
+
+    ClearAllCustomProperties;
+
+    if revisionid <> '' then URL := URL + '/revisions/' + revisionid;
+
+    if exportmimetype <> '' then
+    begin
+    URL :=  URL + '/export';
+    AddCustomProperty(CustomQueryProperties, 'mimeType',exportmimetype);
+    end
+    else AddCustomProperty(CustomQueryProperties, 'alt','media');
+
     DownHTTP.Headers.Add('Authorization: Bearer ' + gOAuth2.Access_token);
-    Result := DownHTTP.HTTPMethod('GET', URL);
-    //    if DownHTTP.ResultCode in [200, 201] then begin
+
+    Result := DownHTTP.HTTPMethod('GET', URL + ExtractQueryproperties);
+
     if (DownHTTP.ResultCode >= 100) and (DownHTTP.ResultCode <= 299) then
     begin
       DownHTTP.Document.SaveToFile(TargetFile);
