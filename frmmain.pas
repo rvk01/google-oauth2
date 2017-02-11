@@ -349,6 +349,8 @@ begin
   if Jdrive.gOAuth2.EMail = '' then exit;
   FileId := JDrive.Files[index].fileid;
   mimeType := JDrive.Files[index].mimeType;
+    popupmenu1.Items[0].enabled:=true;
+  if Pos('application/vnd.google-apps', mimetype) > 0 then popupmenu1.Items[0].enabled:=false;
   popupmenu1.Items[1].enabled:=false;
 
   if FileId <> '' then
@@ -1466,7 +1468,7 @@ begin
   index:=Listview1.ItemIndex;
    if index<0 then exit;
    if Jdrive.gOAuth2.EMail = '' then exit;
-   Areyousure;
+   if not Areyousure then exit;
    FileId := JDrive.Files[index].fileid;
 
    if length(JDrive.Files[index].parents)>0
