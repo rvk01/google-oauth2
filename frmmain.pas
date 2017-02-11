@@ -31,8 +31,6 @@ type
     Button5: TButton;
     btGetAppointments: TButton;
     btClearDebug: TButton;
-    Button6: TButton;
-    Button7: TButton;
     Button8: TButton;
     btGetContacts: TButton;
     listmthd: TCheckBox;
@@ -68,6 +66,7 @@ type
     ListView2: TListView;
     MenuItem1: TMenuItem;
     exportmenu: TMenuItem;
+    MenuItem2: TMenuItem;
     MenuItem3: TMenuItem;
     MenuItem4: TMenuItem;
     PageControl6: TPageControl;
@@ -137,6 +136,7 @@ type
     procedure ListView1DblClick(Sender: TObject);
     procedure ListView2DblClick(Sender: TObject);
     procedure MenuItem1Click(Sender: TObject);
+    procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
     procedure StringGrid1DblClick(Sender: TObject);
     procedure StringGrid3KeyDown(Sender: TObject; var Key: word;
@@ -349,7 +349,7 @@ begin
   if Jdrive.gOAuth2.EMail = '' then exit;
   FileId := JDrive.Files[index].fileid;
   mimeType := JDrive.Files[index].mimeType;
-    popupmenu1.Items[0].enabled:=true;
+  popupmenu1.Items[0].enabled:=true;
   if Pos('application/vnd.google-apps', mimetype) > 0 then popupmenu1.Items[0].enabled:=false;
   popupmenu1.Items[1].enabled:=false;
 
@@ -1390,7 +1390,7 @@ begin
   if FileId <> '' then
   begin
    if mimeType='application/vnd.google-apps.folder' then begin
-    Jdrive.ListFiles(JDrive.Files,[showpreviousfolder],FileId);
+    Jdrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],FileId,'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents');
     FillDriveView2;
     exit;
     end
@@ -1459,6 +1459,12 @@ begin
       JDrive.DownloadFile(fileid,originalfilename);
     end;
   end;
+end;
+
+procedure TMainform.MenuItem2Click(Sender: TObject);
+begin
+  showmessage(inttostr(Listview1.itemindex));
+  showmessage(JDrive.Files[Listview1.ItemIndex].parents[0].id);
 end;
 
 procedure TMainform.MenuItem4Click(Sender: TObject);

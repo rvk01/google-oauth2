@@ -1,7 +1,7 @@
 object Mainform: TMainform
-  Left = 305
+  Left = 233
   Height = 696
-  Top = 170
+  Top = 124
   Width = 1147
   Caption = 'Google OAuth 2.0 testapp'
   ClientHeight = 696
@@ -784,9 +784,9 @@ object Mainform: TMainform
         TabOrder = 5
         object ListView1: TListView
           Left = 0
-          Height = 407
-          Top = 32
-          Width = 773
+          Height = 431
+          Top = 8
+          Width = 914
           Align = alCustom
           Anchors = [akTop, akLeft, akRight, akBottom]
           Columns = <          
@@ -857,25 +857,6 @@ object Mainform: TMainform
           ViewStyle = vsReport
           OnDblClick = ListView2DblClick
         end
-        object Button6: TButton
-          Left = 1
-          Height = 25
-          Top = 6
-          Width = 75
-          Caption = '< GO BACK'
-          OnClick = Button6Click
-          TabOrder = 2
-        end
-        object Button7: TButton
-          Left = 785
-          Height = 25
-          Top = 42
-          Width = 117
-          Anchors = [akTop, akRight]
-          Caption = 'Delete selected'
-          OnClick = Button7Click
-          TabOrder = 3
-        end
       end
     end
   end
@@ -901,6 +882,10 @@ object Mainform: TMainform
     object MenuItem4: TMenuItem
       Caption = 'Delete File'
       OnClick = MenuItem4Click
+    end
+    object MenuItem2: TMenuItem
+      Caption = '(test) show parent'
+      OnClick = MenuItem2Click
     end
   end
 end
