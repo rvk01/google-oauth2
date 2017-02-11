@@ -1360,7 +1360,7 @@ begin
     end
   else
     begin
-    JDrive.ListFiles(JDrive.Files,[showpreviousfolder],'root','name,mimeType,id,size,modifiedTime,iconLink,parents');
+    JDrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],'root','name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents');
     FillDriveView2;
     end;
 
@@ -1478,7 +1478,7 @@ begin
    ParentID:='root';
 
    Jdrive.DeleteGFile(FileId);
-   JDrive.ListFiles(JDrive.Files,[showpreviousfolder],parentid,'name,mimeType,id,size,modifiedTime,iconLink,parents');
+   JDrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],parentid,'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents');
    FillDriveView2;
 
 end;
