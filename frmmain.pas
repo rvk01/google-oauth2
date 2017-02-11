@@ -137,6 +137,7 @@ type
     procedure ListView1DblClick(Sender: TObject);
     procedure ListView2DblClick(Sender: TObject);
     procedure MenuItem1Click(Sender: TObject);
+    procedure MenuItem4Click(Sender: TObject);
     procedure StringGrid1DblClick(Sender: TObject);
     procedure StringGrid3KeyDown(Sender: TObject; var Key: word;
       Shift: TShiftState);
@@ -189,6 +190,30 @@ const
   client_id = '896304839415-nnl5e0smrtakhr9r2l3bno0tes2mrtgk.apps.googleusercontent.com';
   client_secret = 'dUahHDn3IMyhCIk3qD4tf8E_';
 var  JDrive: Tgoogledrive;
+
+
+
+function Areyousure: boolean;
+  var
+    i, j, k: integer;
+  var
+    s1, s2: string;
+  begin
+    randomize;
+    i := random(10);
+    j := random(10);
+    k := i + j;
+    s1 := IntToStr(k);
+    inputquery('Question', 'What is the result of ' + IntToStr(i) + ' + ' + IntToStr(j) + ' ?', s2);
+    if s1 <> s2 then
+    begin
+      ShowMessage('Not correct !!!');
+      Result := False;
+    end
+    else
+      Result := True;
+  end;
+
 
 procedure TMainform.AddToLog(Str: string);
 begin
@@ -294,20 +319,18 @@ procedure TMainform.ExporttoFile(sender : tobject);
 var FileId, mimetype, filename: string;
 var exp : tgdExportArray;
 var fileextension,exportmt:string;
+var index:integer;
 begin
 
+  index:=Listview1.ItemIndex;
+  if index<0 then exit;
   if Jdrive.gOAuth2.EMail = '' then exit;
-  FileId := '';
 
-  if (ListView1.Selected.SubItems.Count > 4) then
-  begin
-    FileId := ListView1.Selected.SubItems.Strings[4];
-    mimeType := ListView1.Selected.SubItems.Strings[2];
-    FileName := ListView1.Selected.Caption;
-  end;
+  FileId := JDrive.Files[index].fileid;
+  mimeType := JDrive.Files[index].mimeType;
+  FileName := JDrive.Files[index].name;
 
   exp:=assignTgdexport(mimetype);
-
   fileextension :=exp[(sender as tmenuitem).tag].FileExtension;
   exportmt :=exp[(sender as tmenuitem).tag].MimeType;
 
@@ -316,27 +339,21 @@ end;
 
 procedure TMainform.ListView1Click(Sender: TObject);
 var i: tmenuitem;
-var j: integer;
+var j, index: integer;
 var FileId, mimetype: string;
 var exp : tgdExportArray;
 begin
+
+  index:=Listview1.ItemIndex;
+  if index<0 then exit;
   if Jdrive.gOAuth2.EMail = '' then exit;
-  FileId := '';
-
-  if (ListView1.Selected.SubItems.Count > 4) then
-  begin
-    FileId := ListView1.Selected.SubItems.Strings[4];
-    mimeType := ListView1.Selected.SubItems.Strings[2];
-  end;
-
+  FileId := JDrive.Files[index].fileid;
+  mimeType := JDrive.Files[index].mimeType;
   popupmenu1.Items[1].enabled:=false;
 
   if FileId <> '' then
   begin
-   if mimeType='application/vnd.google-apps.folder' then exit
-    else begin
-      //JDrive.DownloadFile(fileid,'test.pdf');
-    end;
+   if mimeType='application/vnd.google-apps.folder' then exit;
   end;
 
 exp:=assignTgdexport(mimetype);
@@ -1341,7 +1358,7 @@ begin
     end
   else
     begin
-    JDrive.ListFiles(JDrive.Files,[showpreviousfolder],'root','name,mimeType,id,size,modifiedTime,iconLink');
+    JDrive.ListFiles(JDrive.Files,[showpreviousfolder],'root','name,mimeType,id,size,modifiedTime,iconLink,parents');
     FillDriveView2;
     end;
 
@@ -1423,24 +1440,45 @@ begin
 end;
 
 procedure TMainform.MenuItem1Click(Sender: TObject);
-var FileId, mimetype: string;
+var FileId, mimetype,originalFilename: string;
+index : integer;
+exp : TGDExportarray;
 begin
-  if Jdrive.gOAuth2.EMail = '' then exit;
-  FileId := '';
-
-  if (ListView1.Selected.SubItems.Count > 4) then
-  begin
-    FileId := ListView1.Selected.SubItems.Strings[4];
-    mimeType := ListView1.Selected.SubItems.Strings[2];
-  end;
-
+  index:=Listview1.ItemIndex;
+   if index<0 then exit;
+   if Jdrive.gOAuth2.EMail = '' then exit;
+   FileId := JDrive.Files[index].fileid;
+   mimeType := JDrive.Files[index].mimeType;
+   originalFilename := JDrive.Files[index].originalFilename;
   if FileId <> '' then
   begin
-   if mimeType='application/vnd.google-apps.folder' then exit
+   if Pos('application/vnd.google-apps', mimetype) > 0 then exit
     else begin
-      JDrive.DownloadFile(fileid,'test.pdf');
+      JDrive.DownloadFile(fileid,originalfilename);
     end;
   end;
+end;
+
+procedure TMainform.MenuItem4Click(Sender: TObject);
+var FileId, Parentid: string;
+index : integer;
+begin
+  index:=Listview1.ItemIndex;
+   if index<0 then exit;
+   if Jdrive.gOAuth2.EMail = '' then exit;
+   Areyousure;
+   FileId := JDrive.Files[index].fileid;
+
+   if length(JDrive.Files[index].parents)>0
+   then
+   ParentId := JDrive.Files[index].parents[0].id
+   else
+   ParentID:='root';
+
+   Jdrive.DeleteGFile(FileId);
+   JDrive.ListFiles(JDrive.Files,[showpreviousfolder],parentid,'name,mimeType,id,size,modifiedTime,iconLink,parents');
+   FillDriveView2;
+
 end;
 
 procedure TMainform.Button2Click(Sender: TObject);
