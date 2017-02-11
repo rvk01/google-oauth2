@@ -150,6 +150,7 @@ type
     procedure AfterShow(var Msg: TLMessage); message WM_AFTER_SHOW;
   public
     { public declarations }
+    procedure ExporttoFile(sender : tobject);
     procedure AddToLog(Str: string);
     procedure CheckTokenFile;
     function GetJSONParam(filename, param: string): string;
@@ -279,15 +280,38 @@ begin
   PostMessage(Self.Handle, WM_AFTER_SHOW, 0, 0);
 end;
 
-procedure ExporttoFile(sender : tobject);
-var dl
+
+function assignTgdexport(mimetype:string):tgdexportarray;
+begin
+  setlength(result,0);
+  if mimeType='application/vnd.google-apps.document' then result:=GoogleDocumentsExport;
+  if mimeType='application/vnd.google-apps.drawing' then result:=GoogleDrawingsExport;
+  if mimeType='application/vnd.google-apps.spreadsheet' then result:=GoogleSpreadsheetsExport;
+  if mimeType='application/vnd.google-apps.presentation' then result:=GooglePresentationsExport;
+end;
+
+procedure TMainform.ExporttoFile(sender : tobject);
+var FileId, mimetype, filename: string;
+var exp : tgdExportArray;
+var fileextension,exportmt:string;
 begin
 
-  curusr :=jlistusr[(sender as tmenuitem).tag].ident;
-  curusrnom := jlistusr[(sender as tmenuitem).tag].nom;
-  curusrnum := inttostr(jlistusr[(sender as tmenuitem).tag].ordre);
-  label47.Caption := 'Utilisateur : ' + curusrnom;
+  if Jdrive.gOAuth2.EMail = '' then exit;
+  FileId := '';
 
+  if (ListView1.Selected.SubItems.Count > 4) then
+  begin
+    FileId := ListView1.Selected.SubItems.Strings[4];
+    mimeType := ListView1.Selected.SubItems.Strings[2];
+    FileName := ListView1.Selected.Caption;
+  end;
+
+  exp:=assignTgdexport(mimetype);
+
+  fileextension :=exp[(sender as tmenuitem).tag].FileExtension;
+  exportmt :=exp[(sender as tmenuitem).tag].MimeType;
+
+  JDrive.DownloadFile(FileId,filename+fileextension,'',exportmt);
 end;
 
 procedure TMainform.ListView1Click(Sender: TObject);
@@ -315,13 +339,7 @@ begin
     end;
   end;
 
-setlength(exp,0);
-
-if mimeType='application/vnd.google-apps.document' then exp:=GoogleDocumentsExport;
-if mimeType='application/vnd.google-apps.drawing' then exp:=GoogleDrawingsExport;
-if mimeType='application/vnd.google-apps.spreadsheet' then exp:=GoogleSpreadsheetsExport;
-if mimeType='application/vnd.google-apps.presentation' then exp:=GooglePresentationsExport;
-
+exp:=assignTgdexport(mimetype);
 if length(exp)=0 then exit;
 
   with popupmenu1.Items[1] do begin
@@ -330,6 +348,7 @@ if length(exp)=0 then exit;
   i:=Tmenuitem.create(popupmenu1.Items[1]);
   i.Caption:='Export to ' + exp[j].Description;
   i.Tag:=j;
+  i.OnClick:=@exporttofile;
   popupmenu1.Items[1].Add(i);
   end;
   end;

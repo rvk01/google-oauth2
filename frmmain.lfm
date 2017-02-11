@@ -1,7 +1,7 @@
 object Mainform: TMainform
-  Left = -28
+  Left = 305
   Height = 696
-  Top = 515
+  Top = 165
   Width = 1147
   Caption = 'Google OAuth 2.0 testapp'
   ClientHeight = 696
@@ -556,10 +556,10 @@ object Mainform: TMainform
                 OnKeyDown = StringGrid3KeyDown
                 ColWidths = (
                   64
-                  258
-                  258
-                  258
-                  258
+                  253
+                  253
+                  253
+                  256
                 )
               end
               object Edit2: TEdit
@@ -619,10 +619,10 @@ object Mainform: TMainform
                 OnKeyDown = StringGrid3KeyDown
                 ColWidths = (
                   64
-                  258
-                  258
-                  258
-                  258
+                  253
+                  253
+                  253
+                  256
                 )
               end
               object Button3: TButton
@@ -886,6 +886,7 @@ object Mainform: TMainform
     top = 36
     object MenuItem1: TMenuItem
       Caption = 'Download File'
+      Enabled = False
       OnClick = MenuItem1Click
     end
     object exportmenu: TMenuItem
@@ -898,6 +899,7 @@ object Mainform: TMainform
     end
     object MenuItem4: TMenuItem
       Caption = 'Delete File'
+      Enabled = False
     end
   end
 end
