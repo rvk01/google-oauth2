@@ -13,40 +13,43 @@ uses
 type TGDExport = record
     Description : string;
     MimeType : string;
+    FileExtension : string;
 end;
+
+type TGDExportArray = array of TGDExport;
 
 const GoogleDocumentsExport : array [0..5] of TGDExport =
     (
-    (Description:'HTML';MimeType:'text/html'),
-    (Description:'Plain Text';MimeType:'text/plain'),
-    (Description:'Rich text';MimeType:'application/rtf'),
-    (Description:'Open Office';MimeType:'application/vnd.oasis.opendocument.text'),
-    (Description:'PDF';MimeType:'application/pdf'),
-    (Description:'MS Word document';MimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    (Description:'HTML';MimeType:'text/html';FileExtension:'.html'),
+    (Description:'Plain Text';MimeType:'text/plain';FileExtension:'.txt'),
+    (Description:'Rich text';MimeType:'application/rtf';FileExtension:'.rtf'),
+    (Description:'Open Office';MimeType:'application/vnd.oasis.opendocument.text';FileExtension:'.odt'),
+    (Description:'PDF';MimeType:'application/pdf';FileExtension:'.pdf'),
+    (Description:'MS Word document';MimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document';FileExtension:'.docx')
     ) ;
 
 const GoogleSpreadsheetsExport : array [0..3] of TGDExport =
     (
-    (Description:'MS Excel';MimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
-    (Description:'Open Office sheet';MimeType:'application/x-vnd.oasis.opendocument.spreadsheet'),
-    (Description:'PDF';MimeType:'application/pdf'),
-    (Description:'CSV (first sheet only)';MimeType:'text/csv')
+    (Description:'MS Excel';MimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';FileExtension:'.xlsx'),
+    (Description:'Open Office sheet';MimeType:'application/x-vnd.oasis.opendocument.spreadsheet';FileExtension:'.ods'),
+    (Description:'PDF';MimeType:'application/pdf';FileExtension:'.pdf'),
+    (Description:'CSV (first sheet only)';MimeType:'text/csv';FileExtension:'.csv')
     ) ;
 
 const GoogleDrawingsExport : array [0..3] of TGDExport =
     (
-    (Description:'JPEG';MimeType:'image/jpeg'),
-    (Description:'PNG';MimeType:'image/png'),
-    (Description:'SVG';MimeType:'image/svg+xml'),
-    (Description:'PDF';MimeType:'application/pdf')
+    (Description:'JPEG';MimeType:'image/jpeg';FileExtension:'.jpg'),
+    (Description:'PNG';MimeType:'image/png';FileExtension:'.png'),
+    (Description:'SVG';MimeType:'image/svg+xml';FileExtension:'.svg'),
+    (Description:'PDF';MimeType:'application/pdf';FileExtension:'.pdf')
     ) ;
 
 
 const GooglePresentationsExport : array [0..2] of TGDExport =
     (
-    (Description:'MS PowerPoint';MimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'),
-    (Description:'Plain text';MimeType:'text/plain'),
-    (Description:'PDF';MimeType:'application/pdf')
+    (Description:'MS PowerPoint';MimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation';FileExtension:'.pptx'),
+    (Description:'Plain text';MimeType:'text/plain';FileExtension:'.txt'),
+    (Description:'PDF';MimeType:'application/pdf';FileExtension:'.pdf')
     ) ;
 
 type apiver = (v2, v3);

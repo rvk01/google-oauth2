@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ComCtrls, ExtCtrls, Grids, blcksock, fpjson, jsonConf, LMessages, EditBtn,
-  DbCtrls, md5;
+  DbCtrls, Menus, md5,google_drive;
 
 const
   WM_AFTER_SHOW = WM_USER + 300;
@@ -31,8 +31,6 @@ type
     Button5: TButton;
     btGetAppointments: TButton;
     btClearDebug: TButton;
-    Button6: TButton;
-    Button7: TButton;
     Button8: TButton;
     btGetContacts: TButton;
     listmthd: TCheckBox;
@@ -66,9 +64,15 @@ type
     Label7: TLabel;
     ListView1: TListView;
     ListView2: TListView;
+    MenuItem1: TMenuItem;
+    exportmenu: TMenuItem;
+    MenuItem2: TMenuItem;
+    MenuItem3: TMenuItem;
+    MenuItem4: TMenuItem;
     PageControl6: TPageControl;
     Panel2: TPanel;
     Panel3: TPanel;
+    PopupMenu1: TPopupMenu;
     ProgressBar2: TProgressBar;
     Splitter1: TSplitter;
     StatusBar1: TStatusBar;
@@ -123,12 +127,17 @@ type
     procedure Button4Click(Sender: TObject);
     procedure Button5Click(Sender: TObject);
     procedure Button6Click(Sender: TObject);
+    procedure Button7Click(Sender: TObject);
     procedure ckHideFoldersClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure ListView1Click(Sender: TObject);
     procedure ListView1DblClick(Sender: TObject);
     procedure ListView2DblClick(Sender: TObject);
+    procedure MenuItem1Click(Sender: TObject);
+    procedure MenuItem2Click(Sender: TObject);
+    procedure MenuItem4Click(Sender: TObject);
     procedure StringGrid1DblClick(Sender: TObject);
     procedure StringGrid3KeyDown(Sender: TObject; var Key: word;
       Shift: TShiftState);
@@ -142,6 +151,7 @@ type
     procedure AfterShow(var Msg: TLMessage); message WM_AFTER_SHOW;
   public
     { public declarations }
+    procedure ExporttoFile(sender : tobject);
     procedure AddToLog(Str: string);
     procedure CheckTokenFile;
     function GetJSONParam(filename, param: string): string;
@@ -150,7 +160,7 @@ type
     // function Download_Gdrive_File(id,auth, target: string): Boolean;
     procedure FillDriveGrid_old;
     procedure FillDriveView;
-    procedure UploadWithResume(fileid: string = '');
+    procedure UploadWithResume(fileid: string = '';settings : TUploadSettings = []);
     procedure FillDriveView2;
   end;
 
@@ -164,7 +174,7 @@ uses
   DB,
   google_oauth2,
   google_calendar,
-  google_drive,
+
 
   smtpsend,
   httpsend,
@@ -180,6 +190,30 @@ const
   client_id = '896304839415-nnl5e0smrtakhr9r2l3bno0tes2mrtgk.apps.googleusercontent.com';
   client_secret = 'dUahHDn3IMyhCIk3qD4tf8E_';
 var  JDrive: Tgoogledrive;
+
+
+
+function Areyousure: boolean;
+  var
+    i, j, k: integer;
+  var
+    s1, s2: string;
+  begin
+    randomize;
+    i := random(10);
+    j := random(10);
+    k := i + j;
+    s1 := IntToStr(k);
+    inputquery('Question', 'What is the result of ' + IntToStr(i) + ' + ' + IntToStr(j) + ' ?', s2);
+    if s1 <> s2 then
+    begin
+      ShowMessage('Not correct !!!');
+      Result := False;
+    end
+    else
+      Result := True;
+  end;
+
 
 procedure TMainform.AddToLog(Str: string);
 begin
@@ -272,6 +306,77 @@ begin
 end;
 
 
+function assignTgdexport(mimetype:string):tgdexportarray;
+begin
+  setlength(result,0);
+  if mimeType='application/vnd.google-apps.document' then result:=GoogleDocumentsExport;
+  if mimeType='application/vnd.google-apps.drawing' then result:=GoogleDrawingsExport;
+  if mimeType='application/vnd.google-apps.spreadsheet' then result:=GoogleSpreadsheetsExport;
+  if mimeType='application/vnd.google-apps.presentation' then result:=GooglePresentationsExport;
+end;
+
+procedure TMainform.ExporttoFile(sender : tobject);
+var FileId, mimetype, filename: string;
+var exp : tgdExportArray;
+var fileextension,exportmt:string;
+var index:integer;
+begin
+
+  index:=Listview1.ItemIndex;
+  if index<0 then exit;
+  if Jdrive.gOAuth2.EMail = '' then exit;
+
+  FileId := JDrive.Files[index].fileid;
+  mimeType := JDrive.Files[index].mimeType;
+  FileName := JDrive.Files[index].name;
+
+  exp:=assignTgdexport(mimetype);
+  fileextension :=exp[(sender as tmenuitem).tag].FileExtension;
+  exportmt :=exp[(sender as tmenuitem).tag].MimeType;
+
+  JDrive.DownloadFile(FileId,filename+fileextension,'',exportmt);
+end;
+
+procedure TMainform.ListView1Click(Sender: TObject);
+var i: tmenuitem;
+var j, index: integer;
+var FileId, mimetype: string;
+var exp : tgdExportArray;
+begin
+
+  index:=Listview1.ItemIndex;
+  if index<0 then exit;
+  if Jdrive.gOAuth2.EMail = '' then exit;
+  FileId := JDrive.Files[index].fileid;
+  mimeType := JDrive.Files[index].mimeType;
+  popupmenu1.Items[0].enabled:=true;
+  if Pos('application/vnd.google-apps', mimetype) > 0 then popupmenu1.Items[0].enabled:=false;
+  popupmenu1.Items[1].enabled:=false;
+
+  if FileId <> '' then
+  begin
+   if mimeType='application/vnd.google-apps.folder' then exit;
+  end;
+
+exp:=assignTgdexport(mimetype);
+if length(exp)=0 then exit;
+
+  with popupmenu1.Items[1] do begin
+  clear;
+  for j:=0 to length(exp) - 1 do begin
+  i:=Tmenuitem.create(popupmenu1.Items[1]);
+  i.Caption:='Export to ' + exp[j].Description;
+  i.Tag:=j;
+  i.OnClick:=@exporttofile;
+  popupmenu1.Items[1].Add(i);
+  end;
+  end;
+
+  popupmenu1.Items[1].enabled:=true;
+
+  end;
+
+
 
 
 procedure TMainform.StringGrid1DblClick(Sender: TObject);
@@ -279,6 +384,7 @@ var
   Filename: string;
   FileId: string;
   A: TGFileRevisions;
+  prop : TCustomproperties;
   Rev: integer;
 begin
 
@@ -297,7 +403,6 @@ begin
   StringGrid4.Cells[8, 0] := 'RevisionId';
 
 
-
   with TStringGrid(Sender) do
   begin
     FileId := cells[6, Row];
@@ -307,6 +412,21 @@ begin
 
   Filename := Extractfilepath(ParamStr(0)) + Filename;
   // check for valid filename
+
+ try
+ with Jdrive do begin
+ ClearAllCustomProperties;
+ AddCustomProperty(CustomBodyProperties,'name','Filename Test',asstring);
+ AddCustomProperty(CustomBodyProperties,'originalFilename','Filename Test',asstring);
+ AddCustomProperty(CustomBodyProperties,'trashed','false');
+ AddCustomProperty(CustomBodyProperties,'description','Desciption test',asstring);
+ AddCustomProperty(CustomBodyProperties,'starred','true');
+ AddCustomProperty(CustomQueryProperties,'keepRevisionForever','true');
+ SetFileProperties(Fileid);
+ end;
+  except
+  end;
+
   try
     // JDrive.DownloadFile(FileId, Filename);
     A := JDrive.GetRevisions(FileId);
@@ -319,8 +439,8 @@ begin
         StringGrid4.Cells[6, Rev + 1] := A[Rev].id;
         StringGrid4.Cells[4, Rev + 1] := A[Rev].originalFileName;
         StringGrid4.Cells[7, Rev + 1] := A[Rev].mimetype;
-        StringGrid4.Cells[3, Rev + 1] := A[Rev].modifieddate;
-        Memo1.Lines.Add(A[Rev].revisionid + ' - ' + A[Rev].mimetype + ' - ' + A[Rev].modifieddate);
+        StringGrid4.Cells[3, Rev + 1] := A[Rev].modifiedTime;
+        Memo1.Lines.Add(A[Rev].revisionid + ' - ' + A[Rev].mimetype + ' - ' + A[Rev].modifiedTime);
       end
     else
       Memo1.Lines.Add('no revisions');
@@ -347,6 +467,7 @@ end;
 
 procedure TMainform.StringGrid4DblClick(Sender: TObject);
 var fileid, revisionid, filename: string;
+
 begin
   with TStringGrid(Sender) do
   begin
@@ -835,6 +956,11 @@ begin
   (sender as tbutton).Enabled:=true;
 end;
 
+procedure TMainform.Button7Click(Sender: TObject);
+begin
+
+end;
+
 procedure TMainform.ckHideFoldersClick(Sender: TObject);
 begin
   FillDriveGrid_old;
@@ -1234,7 +1360,7 @@ begin
     end
   else
     begin
-    JDrive.ListFiles(JDrive.Files,[showpreviousfolder],'root','name,mimeType,id,size,modifiedTime,iconLink');
+    JDrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],'root','name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents');
     FillDriveView2;
     end;
 
@@ -1264,11 +1390,12 @@ begin
   if FileId <> '' then
   begin
    if mimeType='application/vnd.google-apps.folder' then begin
-    Jdrive.ListFiles(JDrive.Files,[showpreviousfolder],FileId);
+    Jdrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],FileId,'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents');
     FillDriveView2;
     exit;
     end
     else begin
+    JDrive.DownloadFile(fileid, 'test.pdf','','application/pdf');
     A := JDrive.GetRevisions(FileId);
     Memo1.Lines.add(IntToStr(length(A)) + ' revisions found');
     if Length(A) > 0 then
@@ -1276,7 +1403,7 @@ begin
       begin;
         ListItem := ListView2.Items.Add;
         ListItem.Caption := A[Rev].revisionid;
-        ListItem.SubItems.Add(A[Rev].modifieddate);
+        ListItem.SubItems.Add(A[Rev].modifiedTime);
         ListItem.SubItems.Add(A[Rev].originalFileName);
         ListItem.SubItems.Add(A[Rev].mimetype);
         ListItem.SubItems.Add(A[Rev].id);
@@ -1312,6 +1439,54 @@ begin
       StatusBar1.SimpleText := Filename + ' downloaded';
     end;
   end;
+end;
+
+procedure TMainform.MenuItem1Click(Sender: TObject);
+var FileId, mimetype,originalFilename: string;
+index : integer;
+exp : TGDExportarray;
+begin
+  index:=Listview1.ItemIndex;
+   if index<0 then exit;
+   if Jdrive.gOAuth2.EMail = '' then exit;
+   FileId := JDrive.Files[index].fileid;
+   mimeType := JDrive.Files[index].mimeType;
+   originalFilename := JDrive.Files[index].originalFilename;
+  if FileId <> '' then
+  begin
+   if Pos('application/vnd.google-apps', mimetype) > 0 then exit
+    else begin
+      JDrive.DownloadFile(fileid,originalfilename);
+    end;
+  end;
+end;
+
+procedure TMainform.MenuItem2Click(Sender: TObject);
+begin
+  showmessage(inttostr(Listview1.itemindex));
+  showmessage(JDrive.Files[Listview1.ItemIndex].parents[0].id);
+end;
+
+procedure TMainform.MenuItem4Click(Sender: TObject);
+var FileId, Parentid: string;
+index : integer;
+begin
+  index:=Listview1.ItemIndex;
+   if index<0 then exit;
+   if Jdrive.gOAuth2.EMail = '' then exit;
+   if not Areyousure then exit;
+   FileId := JDrive.Files[index].fileid;
+
+   if length(JDrive.Files[index].parents)>0
+   then
+   ParentId := JDrive.Files[index].parents[0].id
+   else
+   ParentID:='root';
+
+   Jdrive.DeleteGFile(FileId);
+   JDrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],parentid,'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents');
+   FillDriveView2;
+
 end;
 
 procedure TMainform.Button2Click(Sender: TObject);
@@ -1521,10 +1696,10 @@ end;
 
 
 
-procedure TMainform.UploadWithResume(fileid: string = '');
+procedure TMainform.UploadWithResume(fileid: string = '';settings : TUploadSettings = []);
 const
   BaseURL = 'https://www.googleapis.com/upload/drive/v3/files';
-  Param = 'uploadType=resumable';
+  Param = '';
   Pendingfile = 'Pendingupload.json';
 
   function GetNewUploadFile: TPendingUpload;
@@ -1555,7 +1730,7 @@ const
     Data := TFileStream.Create(UploadFilename, fmOpenRead);
     try
       UploadURL := JDrive.GetUploadURI(BaseURL, JDrive.gOAuth2.Access_token,
-        Result.filename, Result.Description, Data, Param, fileid);
+        Result.filename, Result.Description, Data, Param, fileid, settings);
       ShowMessage(UploadURL);
       if pos('upload_id', UploadURL) > 0 then
       begin
@@ -1659,7 +1834,7 @@ begin
           Memo1.Lines.add(Current.filename + ' md5 mismatch');
           // need to reupload
           qURL := JDrive.GetUploadURI(BaseURL, JDrive.gOAuth2.Access_token,
-            Current.Filename, Current.Description, Data, Param, fileid);
+            Current.Filename, Current.Description, Data, Param, fileid, settings);
           if pos('upload_id', qURL) > 0 then
           begin
             Current.url := qURL;
@@ -1712,7 +1887,7 @@ begin
   x := Stringgrid4.Selection.Top;
   fileid := stringgrid4.Cells[6, x];
   if fileid = '' then exit;
-  uploadwithresume(fileid);
+  uploadwithresume(fileid,[keepforever,renamefile]);
 
 end;
 
