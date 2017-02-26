@@ -8,7 +8,7 @@ interface
 
 uses
   Classes, SysUtils, DB, Forms, google_oauth2, fpjson, jsonparser, memds,
-  httpsend, blcksock, typinfo, ComCtrls, synautil, StdCtrls, dialogs;
+  httpsend, blcksock, typinfo, ComCtrls, synautil, StdCtrls, md5;
 
 type TGDExport = record
     Description : string;
@@ -526,7 +526,9 @@ begin
   DownHTTP := THTTPSend.Create;
   Progress.Min := 0;
   Progress.Max := size;
+  Progress.Position:= from;
   Bytes := 0;
+
   MaxBytes := -1;
 
   if not resume then
@@ -573,12 +575,16 @@ begin
 
    Application.processmessages;
    until (from >= size) or (CancelCurrent);
-
    Result := True;
 
   finally
     DownHTTP.Free;
     Stream.Free;
+
+   if (JFile.md5Checksum<> '') and (JFile.md5Checksum=md5print(md5file(TargetFile))) then
+   LogMemo.Lines.Add('Download OK - checkSum OK') else
+   LogMemo.Lines.Add('Download OK - checkSum is not correct !!!');
+
   end;
 end;
 

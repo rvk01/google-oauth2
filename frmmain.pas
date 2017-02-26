@@ -1357,7 +1357,7 @@ begin
     end
   else
     begin
-    JDrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],'root','name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents');
+    JDrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],'root','name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents,md5Checksum');
     FillDriveView2;
     end;
 
@@ -1387,7 +1387,7 @@ begin
   if FileId <> '' then
   begin
    if mimeType='application/vnd.google-apps.folder' then begin
-    Jdrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],FileId,'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents');
+    Jdrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],FileId,'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents,md5Checksum');
     FillDriveView2;
     exit;
     end
@@ -1481,7 +1481,7 @@ begin
    ParentID:='root';
 
    Jdrive.DeleteGFile(FileId);
-   JDrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],parentid,'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents');
+   JDrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],parentid,'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents,md5Checksum');
    FillDriveView2;
 
 end;
