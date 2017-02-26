@@ -8,7 +8,7 @@ interface
 
 uses
   Classes, SysUtils, DB, Forms, google_oauth2, fpjson, jsonparser, memds,
-  httpsend, blcksock, typinfo, ComCtrls, synautil, StdCtrls;
+  httpsend, blcksock, typinfo, ComCtrls, synautil, StdCtrls, dialogs;
 
 type TGDExport = record
     Description : string;
@@ -125,7 +125,7 @@ type
     { private declarations }
   const MaxResults: integer = 500;
   var
-
+    CancelCur: boolean;
     CurFolder:string;
     FgOAuth2: TGoogleOAuth2;
     LastErrorCode: string;
@@ -160,6 +160,7 @@ type
 
     procedure Populate(aFilter: string = '');
     function DownloadFile(id, TargetFile: string; revisionid: string = ''; exportmimetype : string = ''): boolean;
+    function DownloadResumableFile(JFile: TGFile; TargetFile: string; revisionid: string = ''; exportmimetype : string = ''): boolean;
 
     function GetUploadURI(const URL, auth, FileN, Description: string;const Data: TStream; parameters: string = ''; fileid: string = ''; settings : TuploadSettings = [] ): string;
 
@@ -169,7 +170,7 @@ type
     property GFiles: TGFiles read Files write Files;
     property LogMemo: TMemo read FLogMemo write FLogMemo;
     property DebugMemo: TMemo read FDebugMemo write FDebugMemo;
-
+    property CancelCurrent: boolean read CancelCur write CancelCur;
     function UploadResumableFile(const URL: string; const Data: TStream): string;
     procedure CreateFolder(foldername: string; parentid: string = '');
 
@@ -491,6 +492,99 @@ begin
 end;
 
 
+function TGoogleDrive.DownloadResumableFile(JFile: TGFile; TargetFile: string; revisionid: string = ''; exportmimetype : string = ''): boolean;
+const
+  MaxChunk = 1024 * 1024;// 40 * 256 * 1024;
+var
+  HTTPGetResult: boolean;
+  URL, URLM: string;
+  from,size: integer;
+  Stream: TFileStream;
+  resume: boolean;
+begin
+
+  CancelCurrent:= False;
+  Result := False;
+  resume:= false;
+  if fileexists(TargetFile) then resume:= true;
+
+    if FileExists(TargetFile) then
+    begin
+     Stream:=TFileStream.Create(TargetFile, fmOpenReadWrite);
+     from:= Stream.size;
+    end
+  else
+    begin
+     Stream:=TFileStream.Create(TargetFile, fmCreate);
+     from := 0;
+    end;
+
+  size := strtoint64(JFile.size);
+
+  if gOAuth2.EMail = '' then exit;
+
+  DownHTTP := THTTPSend.Create;
+  Progress.Min := 0;
+  Progress.Max := size;
+
+
+
+  if not resume then
+  LogMemo.Lines.Add('Downloading file...')
+  else
+  LogMemo.Lines.Add('Resuming file...');
+
+  try
+   repeat
+    Bytes := 0;
+    MaxBytes := -1;
+    DownHTTP.Sock.OnStatus := @DownStatus;
+    Stream.Seek(0,soEnd);
+    URL := MetadataURL + '/' + JFile.fileid;
+    ClearAllCustomProperties;
+
+    if revisionid <> '' then URL := URL + '/revisions/' + revisionid;
+
+    if exportmimetype <> '' then
+    begin
+    URL :=  URL + '/export';
+    AddCustomProperty(CustomQueryProperties, 'mimeType',exportmimetype);
+    end
+    else AddCustomProperty(CustomQueryProperties, 'alt','media');
+
+    DownHTTP.Clear;
+    DownHTTP.Headers.Add('Authorization: Bearer ' + gOAuth2.Access_token);
+    DownHTTP.Headers.Add(format('Range: bytes=%d-%d',[from,from+maxchunk]));
+
+    Result := DownHTTP.HTTPMethod('GET', URL + ExtractQueryproperties);
+
+    if (DownHTTP.ResultCode >= 100) and (DownHTTP.ResultCode <= 299) then
+    begin
+    Stream.CopyFrom(DownHTTP.Document, DownHTTP.Document.Size);
+
+    LogMemo.Lines.Add('Download OK [' + IntToStr(DownHTTP.ResultCode) + ' - Range ' + inttostr(from) + ' to ' + inttostr(from+DownHTTP.Document.Size) +']');
+
+    inc(from,DownHTTP.Document.Size+1);
+    Progress.Position := from;
+    end
+    else
+    begin
+      LogMemo.Lines.Add('Error downloading file [' + IntToStr(DownHTTP.ResultCode) + ']');
+    end;
+
+
+   Application.processmessages;
+   until (from >= size) or (CancelCurrent);
+
+   Result := True;
+
+  finally
+    DownHTTP.Free;
+    Stream.Free;
+  end;
+end;
+
+
 function TGoogleDrive.DownloadFile(id, TargetFile: string; revisionid: string = ''; exportmimetype : string = ''): boolean;
 var
   HTTPGetResult: boolean;
@@ -562,7 +656,7 @@ begin
   begin
     Bytes := Bytes + StrToInt(Value);
     pct := round(Bytes / maxbytes * 100);
-    Progress.Position := pct;
+    Progress.Position := progress.position + Bytes;//pct;
     Application.ProcessMessages;
   end;
 

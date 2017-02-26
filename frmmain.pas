@@ -31,6 +31,7 @@ type
     Button5: TButton;
     btGetAppointments: TButton;
     btClearDebug: TButton;
+    Button6: TButton;
     Button8: TButton;
     btGetContacts: TButton;
     listmthd: TCheckBox;
@@ -334,7 +335,7 @@ begin
   fileextension :=exp[(sender as tmenuitem).tag].FileExtension;
   exportmt :=exp[(sender as tmenuitem).tag].MimeType;
 
-  JDrive.DownloadFile(FileId,filename+fileextension,'',exportmt);
+  JDrive.DownloadResumableFile(Jdrive.Files[index],filename+fileextension,'',exportmt);
 end;
 
 procedure TMainform.ListView1Click(Sender: TObject);
@@ -947,13 +948,9 @@ begin
 end;
 
 procedure TMainform.Button6Click(Sender: TObject);
-var parentid:string;
 begin
-  (sender as tbutton).Enabled:=false;
-  parentid:=Jdrive.GetGFileMetadata(JDrive.CurrentFolder,[listparents],'parents').parents[0].id;
-  Jdrive.ListFiles(JDrive.Files,[],parentid);
-  FillDriveView2;
-  (sender as tbutton).Enabled:=true;
+
+Jdrive.cancelcurrent := true;
 end;
 
 procedure TMainform.Button7Click(Sender: TObject);
@@ -1456,7 +1453,7 @@ begin
   begin
    if Pos('application/vnd.google-apps', mimetype) > 0 then exit
     else begin
-      JDrive.DownloadFile(fileid,originalfilename);
+      JDrive.DownloadResumableFile(JDrive.Files[index],originalfilename);
     end;
   end;
 end;
