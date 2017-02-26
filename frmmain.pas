@@ -335,7 +335,7 @@ begin
   fileextension :=exp[(sender as tmenuitem).tag].FileExtension;
   exportmt :=exp[(sender as tmenuitem).tag].MimeType;
 
-  JDrive.DownloadResumableFile(Jdrive.Files[index],filename+fileextension,'',exportmt);
+  JDrive.DownloadFile(fileid,filename+fileextension,'',exportmt);
 end;
 
 procedure TMainform.ListView1Click(Sender: TObject);
