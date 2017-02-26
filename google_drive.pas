@@ -506,12 +506,12 @@ begin
   CancelCurrent:= False;
   Result := False;
   resume:= false;
-  if fileexists(TargetFile) then resume:= true;
 
     if FileExists(TargetFile) then
     begin
      Stream:=TFileStream.Create(TargetFile, fmOpenReadWrite);
      from:= Stream.size;
+     resume:= true;
     end
   else
     begin
@@ -526,8 +526,8 @@ begin
   DownHTTP := THTTPSend.Create;
   Progress.Min := 0;
   Progress.Max := size;
-
-
+  Bytes := 0;
+  MaxBytes := -1;
 
   if not resume then
   LogMemo.Lines.Add('Downloading file...')
@@ -536,8 +536,6 @@ begin
 
   try
    repeat
-    Bytes := 0;
-    MaxBytes := -1;
     DownHTTP.Sock.OnStatus := @DownStatus;
     Stream.Seek(0,soEnd);
     URL := MetadataURL + '/' + JFile.fileid;
@@ -563,12 +561,12 @@ begin
     Stream.CopyFrom(DownHTTP.Document, DownHTTP.Document.Size);
 
     LogMemo.Lines.Add('Download OK [' + IntToStr(DownHTTP.ResultCode) + ' - Range ' + inttostr(from) + ' to ' + inttostr(from+DownHTTP.Document.Size) +']');
-
-    inc(from,DownHTTP.Document.Size+1);
-    Progress.Position := from;
+   // LogMemo.Lines.Add(DownHTTP.Headers.Text);
+    inc(from,DownHTTP.Document.Size);
     end
     else
     begin
+      CancelCurrent:=true;
       LogMemo.Lines.Add('Error downloading file [' + IntToStr(DownHTTP.ResultCode) + ']');
     end;
 
@@ -598,7 +596,7 @@ begin
   try
     Progress.Min := 0;
     Progress.Max := 100;
-    DownHTTP.Sock.OnStatus := @DownStatus;
+//    DownHTTP.Sock.OnStatus := @DownStatus;
     LogMemo.Lines.Add('Downloading file...');
 
     URL := MetadataURL + '/' + id;
@@ -656,7 +654,7 @@ begin
   begin
     Bytes := Bytes + StrToInt(Value);
     pct := round(Bytes / maxbytes * 100);
-    Progress.Position := progress.position + Bytes;//pct;
+    Progress.Position := progress.position + StrToInt(Value);//pct;
     Application.ProcessMessages;
   end;
 
