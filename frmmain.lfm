@@ -750,6 +750,15 @@ object Mainform: TMainform
           State = cbChecked
           TabOrder = 2
         end
+        object Button6: TButton
+          Left = 239
+          Height = 25
+          Top = 8
+          Width = 115
+          Caption = 'Pause / Cancel'
+          OnClick = Button6Click
+          TabOrder = 3
+        end
       end
       object StatusBar1: TStatusBar
         Left = 0
@@ -797,7 +806,7 @@ object Mainform: TMainform
             item
               AutoSize = True
               Caption = 'Date modified'
-              Width = 369
+              Width = 510
             end          
             item
               AutoSize = True
