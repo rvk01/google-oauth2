@@ -10,7 +10,7 @@ Requirements
 ============
 
 * FPC 2.6.4+ (others untested)
-* Synapse
+* Synapse 40+
 * libeay32.dll
 * libssl32.dll
 * ssleay32.dll
