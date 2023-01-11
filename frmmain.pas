@@ -258,7 +258,6 @@ begin
       cfg.Filename:= 'client.dat';
       client_id := cfg.GetValue('client_id', client_id);
       client_secret := cfg.GetValue('client_secret', client_secret);
-      Showmessage(client_id);
     finally
       Cfg.Free;
     end;
@@ -328,12 +327,10 @@ end;
 function assignTgdexport(mimetype: string): tgdexportarray;
 begin
   setlength(Result, 0);
-{
   if mimeType='application/vnd.google-apps.document' then result := GoogleDocumentsExport;
   if mimeType='application/vnd.google-apps.drawing' then result := GoogleDrawingsExport;
   if mimeType='application/vnd.google-apps.spreadsheet' then result := GoogleSpreadsheetsExport;
   if mimeType='application/vnd.google-apps.presentation' then result := GooglePresentationsExport;
-}
 end;
 
 procedure TMainform.ExporttoFile(Sender: TObject);

@@ -18,7 +18,7 @@ end;
 
 type TGDExportArray = array of TGDExport;
 
-const GoogleDocumentsExport : array [0..5] of TGDExport =
+const GoogleDocumentsExport : TGDExportArray =
     (
     (Description:'HTML';MimeType:'text/html';FileExtension:'.html'),
     (Description:'Plain Text';MimeType:'text/plain';FileExtension:'.txt'),
@@ -28,7 +28,7 @@ const GoogleDocumentsExport : array [0..5] of TGDExport =
     (Description:'MS Word document';MimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document';FileExtension:'.docx')
     ) ;
 
-const GoogleSpreadsheetsExport : array [0..3] of TGDExport =
+const GoogleSpreadsheetsExport : TGDExportArray =
     (
     (Description:'MS Excel';MimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';FileExtension:'.xlsx'),
     (Description:'Open Office sheet';MimeType:'application/x-vnd.oasis.opendocument.spreadsheet';FileExtension:'.ods'),
@@ -36,7 +36,7 @@ const GoogleSpreadsheetsExport : array [0..3] of TGDExport =
     (Description:'CSV (first sheet only)';MimeType:'text/csv';FileExtension:'.csv')
     ) ;
 
-const GoogleDrawingsExport : array [0..3] of TGDExport =
+const GoogleDrawingsExport : TGDExportArray =
     (
     (Description:'JPEG';MimeType:'image/jpeg';FileExtension:'.jpg'),
     (Description:'PNG';MimeType:'image/png';FileExtension:'.png'),
@@ -45,7 +45,7 @@ const GoogleDrawingsExport : array [0..3] of TGDExport =
     ) ;
 
 
-const GooglePresentationsExport : array [0..2] of TGDExport =
+const GooglePresentationsExport : TGDExportArray =
     (
     (Description:'MS PowerPoint';MimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation';FileExtension:'.pptx'),
     (Description:'Plain text';MimeType:'text/plain';FileExtension:'.txt'),
