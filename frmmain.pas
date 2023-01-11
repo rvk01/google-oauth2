@@ -38,8 +38,6 @@ type
     ckHideFolders: TCheckBox;
     CheckGroup1: TCheckGroup;
 
-    ckForceManualAuth: TCheckBox;
-    ckUseBrowserTitle: TCheckBox;
     Edit4: TEdit;
     edLocation: TEdit;
     edStart: TDateEdit;
@@ -190,9 +188,8 @@ uses
 const
   client_id = '896304839415-nnl5e0smrtakhr9r2l3bno0tes2mrtgk.apps.googleusercontent.com';
   client_secret = 'dUahHDn3IMyhCIk3qD4tf8E_';
+
 var  JDrive: Tgoogledrive;
-
-
 
 function Areyousure: boolean;
   var
@@ -229,16 +226,12 @@ begin
     CheckGroup1.Enabled := False;
     CheckGroup1.Caption := 'Access (scope)             remove tokens.dat first to get new access';
     btGetAccess.Caption := 'Check access';
-    ckForceManualAuth.Enabled := False;
-    ckUseBrowserTitle.Enabled := False;
   end
   else
   begin
     CheckGroup1.Enabled := True;
     CheckGroup1.Caption := 'Access (scope)';
     btGetAccess.Caption := 'Get access';
-    ckForceManualAuth.Enabled := True;
-    ckUseBrowserTitle.Enabled := True;
   end;
 
 end;
@@ -262,8 +255,6 @@ begin
   Top := 100;
   Self.WindowState := wsMaximized; // for now
 
-  ckForceManualAuth.Checked := False;
-  ckUseBrowserTitle.Checked := True;
   edStart.Date := Now;
   edEnd.Date := Now;
 
@@ -310,10 +301,12 @@ end;
 function assignTgdexport(mimetype:string):tgdexportarray;
 begin
   setlength(result,0);
-  if mimeType='application/vnd.google-apps.document' then result:=GoogleDocumentsExport;
-  if mimeType='application/vnd.google-apps.drawing' then result:=GoogleDrawingsExport;
-  if mimeType='application/vnd.google-apps.spreadsheet' then result:=GoogleSpreadsheetsExport;
-  if mimeType='application/vnd.google-apps.presentation' then result:=GooglePresentationsExport;
+{
+  if mimeType='application/vnd.google-apps.document' then result := GoogleDocumentsExport;
+  if mimeType='application/vnd.google-apps.drawing' then result := GoogleDrawingsExport;
+  if mimeType='application/vnd.google-apps.spreadsheet' then result := GoogleSpreadsheetsExport;
+  if mimeType='application/vnd.google-apps.presentation' then result := GooglePresentationsExport;
+}
 end;
 
 procedure TMainform.ExporttoFile(sender : tobject);
@@ -479,30 +472,6 @@ begin
   Jdrive.DownloadFile(fileid, filename, revisionid);
 end;
 
-{var
-  Browser: olevariant;
-  GoUrl: variant;
-begin
-
-  GoUrl := '';
-  with TStringGrid(Sender) do
-    GoUrl := Cells[4, Row];
-  if Pos('https://', GoUrl) = 0 then
-    exit;
-
-  Browser := CreateOleObject('InternetExplorer.Application');
-  Browser.Visible := True;
-  Browser.AddressBar := False;
-  Browser.Menubar := False;
-  Browser.ToolBar := False;
-  Browser.StatusBar := False;
-  Browser.Left := (Screen.Width - round(Screen.Width * 0.8)) div 2;
-  Browser.Top := (Screen.Height - round(Screen.Height * 0.8)) div 2;
-  Browser.Width := round(Screen.Width * 0.8);
-  Browser.Height := round(Screen.Height * 0.8);
-  Browser.Navigate(GoUrl);
-  }
-
 procedure TMainform.btGetAccessClick(Sender: TObject);
 var
   gOAuth2: TGoogleOAuth2;
@@ -521,8 +490,6 @@ begin
 
     gOAuth2.LogMemo := Memo1;
     gOAuth2.DebugMemo := Memo2;
-    gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-    gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
     gOAuth2.GetAccess(Scopes, True); // <- get from file
 
     if gOAuth2.EMail <> '' then
@@ -629,8 +596,6 @@ begin
     // first get oauthToken
     gOAuth2.LogMemo := Memo1;
     gOAuth2.DebugMemo := Memo2;
-    gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-    gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
     gOAuth2.GetAccess([], True); // <- get from file
     // no need for scope because we should already have access
     // via the btGetAccess for all the scopes in Groupbox
@@ -804,8 +769,6 @@ begin
 
     ds.gOAuth2.LogMemo := Memo1;
     ds.gOAuth2.DebugMemo := Memo2;
-    ds.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-    ds.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
     ds.gOAuth2.GetAccess([goCalendar], True);
 
     CheckTokenFile;
@@ -891,8 +854,6 @@ begin
   try
     gOAuth2.LogMemo := Memo1;
     gOAuth2.DebugMemo := Memo2;
-    gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-    gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
     gOAuth2.GetAccess([goCalendar], True);
 
     CheckTokenFile;
@@ -1028,8 +989,6 @@ begin
 
     JDrive.gOAuth2.LogMemo := Memo1;
     Jdrive.gOAuth2.DebugMemo := Memo2;
-    Jdrive.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-    Jdrive.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
     Jdrive.gOAuth2.GetAccess([goDrive], True);
 
     CheckTokenFile;
@@ -1340,8 +1299,6 @@ begin
 
   JDrive.gOAuth2.LogMemo := Memo1;
   Jdrive.gOAuth2.DebugMemo := Memo2;
-  Jdrive.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-  Jdrive.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
   Jdrive.gOAuth2.GetAccess([goDrive], True);
 
   CheckTokenFile;
@@ -1507,8 +1464,6 @@ begin
 
   JDrive.gOAuth2.LogMemo := Memo1;
   Jdrive.gOAuth2.DebugMemo := Memo2;
-  Jdrive.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-  Jdrive.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
   Jdrive.gOAuth2.GetAccess([goDrive], True);
   CheckTokenFile;
 
@@ -1628,8 +1583,6 @@ begin
 
     JDrive.gOAuth2.LogMemo := Memo1;
     JDrive.gOAuth2.DebugMemo := Memo2;
-    JDrive.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-    JDrive.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
     JDrive.gOAuth2.GetAccess([], True); // <- get from file
     // no need for scope because we should already have access
     // via the btGetAccess for all the scopes in Groupbox
@@ -1763,8 +1716,6 @@ begin
   try
     JDrive.gOAuth2.LogMemo := Memo1;
     JDrive.gOAuth2.DebugMemo := Memo2;
-    JDrive.gOAuth2.ForceManualAuth := ckForceManualAuth.Checked;
-    JDrive.gOAuth2.UseBrowserTitle := ckUseBrowserTitle.Checked;
     JDrive.gOAuth2.GetAccess([], True); // <- get from file
     // no need for scope because we should already have access
     // via the btGetAccess for all the scopes in Groupbox

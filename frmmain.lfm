@@ -10,15 +10,15 @@ object Mainform: TMainform
   OnDestroy = FormDestroy
   OnShow = FormShow
   Position = poScreenCenter
-  LCLVersion = '1.6.0.4'
+  LCLVersion = '2.3.0.0'
   object PageControl6: TPageControl
     Left = 0
     Height = 696
     Top = 0
     Width = 1147
-    ActivePage = TabSheet15
+    ActivePage = TabSheet14
     Align = alClient
-    TabIndex = 1
+    TabIndex = 0
     TabOrder = 0
     object TabSheet14: TTabSheet
       Caption = 'Google Access'
@@ -103,43 +103,25 @@ object Mainform: TMainform
             06000000020202020202
           }
         end
-        object ckForceManualAuth: TCheckBox
-          Left = 858
-          Height = 19
-          Top = 8
-          Width = 261
-          Anchors = [akTop, akRight]
-          Caption = 'Force manually input of authentication_token'
-          TabOrder = 5
-        end
-        object ckUseBrowserTitle: TCheckBox
-          Left = 858
-          Height = 19
-          Top = 30
-          Width = 238
-          Anchors = [akTop, akRight]
-          Caption = 'Use browser-title for authentication-code'
-          TabOrder = 6
-        end
       end
       object PageControl1: TPageControl
         Left = 0
         Height = 398
         Top = 270
         Width = 1139
-        ActivePage = TabSheet3
+        ActivePage = TabSheet1
         Align = alClient
-        TabIndex = 3
+        TabIndex = 0
         TabOrder = 1
         object TabSheet1: TTabSheet
           Caption = 'GMail'
-          ClientHeight = 216
-          ClientWidth = 765
+          ClientHeight = 370
+          ClientWidth = 1131
           object PageControl2: TPageControl
             Left = 10
-            Height = 196
+            Height = 350
             Top = 10
-            Width = 745
+            Width = 1111
             ActivePage = TabSheet4
             Align = alClient
             BorderSpacing.Around = 10
@@ -147,8 +129,8 @@ object Mainform: TMainform
             TabOrder = 0
             object TabSheet4: TTabSheet
               Caption = 'New mail'
-              ClientHeight = 168
-              ClientWidth = 737
+              ClientHeight = 322
+              ClientWidth = 1103
               object Label1: TLabel
                 Left = 144
                 Height = 23
@@ -166,7 +148,7 @@ object Mainform: TMainform
                 Left = 216
                 Height = 23
                 Top = 16
-                Width = 511
+                Width = 877
                 Anchors = [akTop, akLeft, akRight]
                 Enabled = False
                 TabOrder = 0
@@ -189,7 +171,7 @@ object Mainform: TMainform
                 Left = 216
                 Height = 23
                 Top = 48
-                Width = 511
+                Width = 877
                 Anchors = [akTop, akLeft, akRight]
                 TabOrder = 1
                 Text = 'recipient@valid_domain.com'
@@ -211,16 +193,16 @@ object Mainform: TMainform
                 Left = 216
                 Height = 23
                 Top = 80
-                Width = 511
+                Width = 877
                 Anchors = [akTop, akLeft, akRight]
                 TabOrder = 2
                 Text = 'Subject'
               end
               object edBody: TMemo
                 Left = 10
-                Height = 45
+                Height = 199
                 Top = 113
-                Width = 717
+                Width = 1083
                 Align = alBottom
                 Anchors = [akTop, akLeft, akRight, akBottom]
                 BorderSpacing.Around = 10
@@ -232,7 +214,7 @@ object Mainform: TMainform
               object btSendMail: TButton
                 Left = 10
                 Height = 88
-                Top = 16
+                Top = 15
                 Width = 118
                 Caption = 'Send mail'
                 OnClick = btSendMailClick
@@ -246,13 +228,13 @@ object Mainform: TMainform
         end
         object TabSheet9: TTabSheet
           Caption = 'Contacts'
-          ClientHeight = 218
-          ClientWidth = 830
+          ClientHeight = 370
+          ClientWidth = 1131
           object PageControl4: TPageControl
             Left = 10
-            Height = 198
+            Height = 350
             Top = 10
-            Width = 810
+            Width = 1111
             ActivePage = TabSheet11
             Align = alClient
             BorderSpacing.Around = 10
@@ -260,8 +242,8 @@ object Mainform: TMainform
             TabOrder = 0
             object TabSheet10: TTabSheet
               Caption = 'New contact'
-              ClientHeight = 260
-              ClientWidth = 737
+              ClientHeight = 322
+              ClientWidth = 1103
               object Button8: TButton
                 Left = 10
                 Height = 88
@@ -273,8 +255,8 @@ object Mainform: TMainform
             end
             object TabSheet11: TTabSheet
               Caption = 'Contacts'
-              ClientHeight = 160
-              ClientWidth = 802
+              ClientHeight = 322
+              ClientWidth = 1103
               object btGetContacts: TButton
                 Left = 8
                 Height = 25
@@ -285,9 +267,9 @@ object Mainform: TMainform
               end
               object StringGrid2: TStringGrid
                 Left = 10
-                Height = 102
+                Height = 264
                 Top = 48
-                Width = 782
+                Width = 1083
                 Align = alBottom
                 Anchors = [akTop, akLeft, akRight, akBottom]
                 BorderSpacing.Around = 10
@@ -298,13 +280,13 @@ object Mainform: TMainform
         end
         object TabSheet2: TTabSheet
           Caption = 'Calendar'
-          ClientHeight = 359
-          ClientWidth = 1010
+          ClientHeight = 370
+          ClientWidth = 1131
           object PageControl3: TPageControl
             Left = 10
-            Height = 339
+            Height = 350
             Top = 10
-            Width = 990
+            Width = 1111
             ActivePage = TabSheet6
             Align = alClient
             BorderSpacing.Around = 10
@@ -312,8 +294,8 @@ object Mainform: TMainform
             TabOrder = 0
             object TabSheet6: TTabSheet
               Caption = 'New appointment'
-              ClientHeight = 311
-              ClientWidth = 982
+              ClientHeight = 322
+              ClientWidth = 1103
               object Button5: TButton
                 Left = 10
                 Height = 88
@@ -345,8 +327,6 @@ object Mainform: TMainform
                 Top = 110
                 Width = 260
                 CalendarDisplaySettings = [dsShowHeadings, dsShowDayNames]
-                OKCaption = 'OK'
-                CancelCaption = 'Cancel'
                 DateOrder = doNone
                 ButtonWidth = 23
                 NumGlyphs = 1
@@ -360,8 +340,6 @@ object Mainform: TMainform
                 Top = 142
                 Width = 260
                 CalendarDisplaySettings = [dsShowHeadings, dsShowDayNames]
-                OKCaption = 'OK'
-                CancelCaption = 'Cancel'
                 DateOrder = doNone
                 ButtonWidth = 23
                 NumGlyphs = 1
@@ -420,8 +398,8 @@ object Mainform: TMainform
             end
             object TabSheet7: TTabSheet
               Caption = 'Calendar'
-              ClientHeight = 198
-              ClientWidth = 801
+              ClientHeight = 322
+              ClientWidth = 1103
               object btGetAppointments: TButton
                 Left = 8
                 Height = 25
@@ -433,9 +411,9 @@ object Mainform: TMainform
               end
               object StringGrid1: TStringGrid
                 Left = 10
-                Height = 140
+                Height = 264
                 Top = 48
-                Width = 781
+                Width = 1083
                 Align = alBottom
                 Anchors = [akTop, akLeft, akRight, akBottom]
                 BorderSpacing.Around = 10
@@ -443,7 +421,7 @@ object Mainform: TMainform
                 OnDblClick = StringGrid1DblClick
               end
               object Edit1: TEdit
-                Left = 363
+                Left = 665
                 Height = 23
                 Top = 8
                 Width = 428
@@ -453,7 +431,7 @@ object Mainform: TMainform
                 Text = 'Edit1'
               end
               object Label4: TLabel
-                Left = 331
+                Left = 633
                 Height = 15
                 Top = 12
                 Width = 26
@@ -556,10 +534,10 @@ object Mainform: TMainform
                 OnKeyDown = StringGrid3KeyDown
                 ColWidths = (
                   64
-                  253
-                  253
-                  253
-                  256
+                  258
+                  258
+                  258
+                  258
                 )
               end
               object Edit2: TEdit
@@ -585,7 +563,7 @@ object Mainform: TMainform
                 Left = 192
                 Height = 19
                 Top = 8
-                Width = 86
+                Width = 84
                 Caption = 'Hide Folders'
                 OnClick = ckHideFoldersClick
                 TabOrder = 3
@@ -619,10 +597,10 @@ object Mainform: TMainform
                 OnKeyDown = StringGrid3KeyDown
                 ColWidths = (
                   64
+                  254
+                  254
+                  254
                   253
-                  253
-                  253
-                  256
                 )
               end
               object Button3: TButton
@@ -656,13 +634,13 @@ object Mainform: TMainform
         end
         object TabSheet8: TTabSheet
           Caption = 'Debug'
-          ClientHeight = 412
-          ClientWidth = 754
+          ClientHeight = 370
+          ClientWidth = 1131
           object Memo2: TMemo
             Left = 10
-            Height = 357
+            Height = 315
             Top = 45
-            Width = 734
+            Width = 1111
             Align = alClient
             BorderSpacing.Around = 10
             Lines.Strings = (
@@ -675,7 +653,7 @@ object Mainform: TMainform
             Left = 10
             Height = 25
             Top = 10
-            Width = 734
+            Width = 1111
             Align = alTop
             BorderSpacing.Around = 10
             Caption = 'Clear debugscreen'
@@ -695,7 +673,6 @@ object Mainform: TMainform
         Top = 48
         Width = 209
         Align = alLeft
-        DefaultItemHeight = 18
         RowSelect = True
         TabOrder = 0
         OnClick = TreeView1Click
@@ -744,7 +721,7 @@ object Mainform: TMainform
           Left = 112
           Height = 19
           Top = 13
-          Width = 89
+          Width = 87
           Caption = 'list method 2'
           Checked = True
           State = cbChecked
@@ -806,22 +783,22 @@ object Mainform: TMainform
             item
               AutoSize = True
               Caption = 'Date modified'
-              Width = 510
+              Width = 90
             end          
             item
               AutoSize = True
               Caption = 'Type'
-              Width = 38
+              Width = 40
             end          
             item
               AutoSize = True
               Caption = 'Size'
-              Width = 32
+              Width = 35
             end          
             item
               AutoSize = True
               Caption = 'Original filename'
-              Width = 103
+              Width = 106
             end>
           MultiSelect = True
           PopupMenu = PopupMenu1
@@ -842,22 +819,22 @@ object Mainform: TMainform
             item
               AutoSize = True
               Caption = 'Revision'
-              Width = 909
+              Width = 59
             end          
             item
               AutoSize = True
               Caption = 'Date modified'
-              Width = 87
+              Width = 90
             end          
             item
               AutoSize = True
               Caption = 'Original filename'
-              Width = 103
+              Width = 106
             end          
             item
               AutoSize = True
               Caption = 'Mimetype'
-              Width = 66
+              Width = 69
             end>
           MultiSelect = True
           ReadOnly = True
@@ -870,12 +847,12 @@ object Mainform: TMainform
     end
   end
   object ImageList1: TImageList
-    left = 365
-    top = 205
+    Left = 365
+    Top = 205
   end
   object PopupMenu1: TPopupMenu
-    left = 278
-    top = 40
+    Left = 278
+    Top = 40
     object MenuItem1: TMenuItem
       Caption = 'Download File'
       OnClick = MenuItem1Click

@@ -36,14 +36,12 @@
   https://developers.google.com/accounts/docs/OAuth2InstalledApp
   https://developers.google.com/oauthplayground/
   https://developers.google.com/google-apps/calendar/
-  http://masashi-k.blogspot.nl/2013/06/sending-mail-with-gmail-using-xoauth2.html
+  https://masashi-k.blogspot.nl/2013/06/sending-mail-with-gmail-using-xoauth2.html
   https://www.limilabs.com/blog/oauth2-gmail-imap-service-account
-  https://github.com/onryldz/x-superobject
-  or
-  https://github.com/hgourvest/superobject
 
 
-
+  2022-01-11 use a local server instance to retrieve authorization code instead of IE browser
+  2022-01-11 UseBrowserTitle and ForceManualAuth removed
   2016-12-12 delphi compatible
   2016-12-12 using superobject for json
   2015-07-08 usebrowsertitle to get the auth.code from the title-bar (which sometimes didn't work)
@@ -57,11 +55,12 @@
 // todo: convert for delphi compatibility
 // todo: maybe make token_filename changable
 // todo: improve the documentation and comments
+// http://calebb.net/
 
 unit google_oauth2;
 
 {$IFDEF FPC}
-{$mode objfpc}{$H+}
+{$mode delphi}{$H+}
 {$ENDIF}
 
 
@@ -81,12 +80,9 @@ type
     FClient_id: string;
     FClient_secret: string;
     FAuthorize_token: string;
-    FAuthorize_token_html: string;
     FRefresh_token: string;
     FAccess_token: string;
     FTokens_refreshed: boolean;
-    FForceManualAuth: boolean;
-    FUseBrowserTitle: boolean;
     FScopes: TStringList;
     FLastErrorCode: string;
     FLastErrorMessage: string;
@@ -113,11 +109,8 @@ type
 
     property Tokens_refreshed: boolean read FTokens_refreshed write FTokens_refreshed;
     property Authorize_token: string read FAuthorize_token write FAuthorize_token;
-    property Authorize_token_html: string read FAuthorize_token_html write FAuthorize_token_html;
     property Refresh_token: string read FRefresh_token write FRefresh_token;
     property Access_token: string read FAccess_token write FAccess_token;
-    property ForceManualAuth: boolean read FForceManualAuth write FForceManualAuth;
-    property UseBrowserTitle: boolean read FUseBrowserTitle write FUseBrowserTitle;
     property LastErrorCode: string read FLastErrorCode write FLastErrorCode;
     property LastErrorMessage: string read FLastErrorMessage write FLastErrorMessage;
     property Fullname: string read FFullname write FFullname;
@@ -136,26 +129,31 @@ implementation
 
 uses
   synacode, synautil, httpsend, // for communication
+{$WARN UNIT_DEPRECATED OFF}
   ssl_openssl, // you need to include this one in your requirements
+{$WARN UNIT_DEPRECATED ON}
   comobj, // for ceating Browser-object
-  ActiveX, // CoInitialize
+  // ActiveX, // CoInitialize
   Variants,
-  {$IFDEF USE_SUPEROBJECT} superobject, {$ELSE} fpjson, jsonparser, {$ENDIF}
   Dialogs, // for inputbox
-  Forms // for Screen.Width/Height
+  Forms, // for Screen.Width/Height
+  blcksock,
   // base64, // for the XOAuth2 token, we use synapse now
-  ;
+{$IFDEF USE_SUPEROBJECT} superobject {$ELSE} fpjson, jsonparser {$ENDIF},
+  Shellapi,
+  Windows;
 
 const
   token_filename = 'tokens.dat';
   GetTokenUrl = 'https://accounts.google.com/o/oauth2/token';
   AuthorizationUrl = 'https://accounts.google.com/o/oauth2/auth';
-  RedirectUri = 'urn:ietf:wg:oauth:2.0:oob';
+  // RedirectUri = 'urn:ietf:wg:oauth:2.0:oob';
+  RedirectUri = 'http://localhost:1500';
 
 {$IFNDEF FPC}
 
-// we re-declare this one with string so Delphi doesn't give hints about string-conversion
-function EncodeURLElement(const Value: string): string;
+  // we re-declare this one with string so Delphi doesn't give hints about string-conversion
+function EncodeURLElement(const Value: String): String;
 begin
   Result := string(EncodeTriplet(ansistring(Value), '%', URLSpecialChar + URLFullSpecialChar));
 end;
@@ -164,7 +162,7 @@ end;
 {$IFDEF USE_SUPEROBJECT}
 
 
-function RetrieveJSONValue(JSonString, Key: string; FromArray: string = ''; Index: integer = 0): string;
+function RetrieveJSONValue(JSonString, Key: string; FromArray: String = ''; Index: Integer = 0): string;
 var
   obj: ISuperObject;
 begin
@@ -179,12 +177,11 @@ begin
   begin
     if obj.AsObject.Exists(FromArray) then
       if obj.A[FromArray].O[Index].AsObject.Exists(Key) then
-        Result := obj.A[FromArray].O[Index].S[Key];
+          Result := obj.A[FromArray].O[Index].S[Key];
   end;
   Result := AnsiDequotedStr(Result, '"');
 end;
 {$ELSE}
-
 
 function RetrieveJSONValue(JSonString, Key: string; FromArray: string = ''; Index: integer = 0): string;
 var
@@ -253,12 +250,9 @@ begin
   FClient_id := client_id;
   FClient_secret := client_secret;
   FAuthorize_token := '';
-  FAuthorize_token_html := '';
   FRefresh_token := '';
   FAccess_token := '';
   FTokens_refreshed := False;
-  FForceManualAuth := False;
-  FUseBrowserTitle := True;
   FLastErrorCode := '';
   FLastErrorMessage := '';
   FFullname := '';
@@ -279,24 +273,59 @@ end;
 procedure TGoogleOAuth2.LogLine(Value: string);
 begin
   if LogMemo <> nil then
-    LogMemo.Lines.Add(Value);
+      LogMemo.Lines.Add(Value);
   DebugLine(Value);
 end;
 
 procedure TGoogleOAuth2.DebugLine(Value: string);
 begin
+{$IFDEF DEBUG}
+  // Showmessage(Value);
+{$ENDIF}
   if DebugMemo <> nil then
-    DebugMemo.Lines.Add(Value);
+      DebugMemo.Lines.Add(Value);
 end;
 
 procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boolean = False);
+
+// tr '._-' '\n/+' | sed '2s|$|===|p;d' | base64 -D
 
   procedure GetInformation;
   var
     URL: string;
     Params: string;
     Response: TStringList;
-    JSonStr: string;
+    JSonStr: String;
+  begin
+    URL := 'https://www.googleapis.com/oauth2/v3/userinfo';
+    Params := 'access_token=' + Access_token;
+    Response := TStringList.Create;
+    try
+      if HttpGetText(URL + '?' + Params, Response) then
+      begin
+        JSonStr := Response.Text;
+        DebugLine(JSonStr);
+        LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
+        LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
+        if LastErrorCode <> '' then
+            LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+
+        Fullname := RetrieveJSONValue(JSonStr, 'name');
+        EMail := RetrieveJSONValue(JSonStr, 'email');
+
+      end;
+
+    finally
+        Response.Free;
+    end;
+  end;
+
+  procedure GetInformation_oud_viaGooglePlus_not_used_anymore;
+  var
+    URL: string;
+    Params: string;
+    Response: TStringList;
+    JSonStr: String;
   begin
     URL := 'https://www.googleapis.com/plus/v1/people/me';
     Params := 'access_token=' + Access_token;
@@ -308,7 +337,7 @@ procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boo
         LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
         LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
         if LastErrorCode <> '' then
-          LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+            LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
 
         Fullname := RetrieveJSONValue(JSonStr, 'displayName');
         EMail := RetrieveJSONValue(JSonStr, 'value', 'emails', 0);
@@ -316,7 +345,7 @@ procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boo
       end;
 
     finally
-      Response.Free;
+        Response.Free;
     end;
   end;
 
@@ -330,7 +359,15 @@ begin
   FScopes.Add('email'); // https://www.googleapis.com/auth/userinfo.email
   // always use profile/email to find the full name and email
 
+  // https://mail.google.com/
+  // https://www.googleapis.com/auth/gmail.modify
+  // https://www.googleapis.com/auth/gmail.compose
+
+  // The scope for IMAP and SMTP access is https://mail.google.com/.
+  // https://stackoverflow.com/questions/40881026/reduced-scope-for-gmail-imap-access
+
   if goMail in Scopes then FScopes.Add('https://mail.google.com/');
+  // if goMail in Scopes then FScopes.Add('https://www.googleapis.com/auth/gmail.compose');
   if goContacts in Scopes then FScopes.Add('https://www.google.com/m8/feeds/');
   if goCalendar in Scopes then FScopes.Add('https://www.googleapis.com/auth/calendar');
   if goDrive in Scopes then FScopes.Add('https://www.googleapis.com/auth/drive');
@@ -348,7 +385,7 @@ begin
     LogLine('Getting account information');
     GetInformation;
   end;
-  if (LastErrorCode <> '') or (Access_token = '') then
+  if (EMail = '') or (LastErrorCode <> '') or (Access_token = '') then
   begin
     if Access_token <> '' then
     begin
@@ -365,21 +402,21 @@ begin
       begin
         Tokens_refreshed := True; // and correct
         if UseTokenFile then
-          SaveAccessRefreshTokens
+            SaveAccessRefreshTokens
         else
-          LogLine('Please save the access_token');
+            LogLine('Please save the access_token');
       end;
     end;
   end;
 
   if EMail <> '' then
-    LogLine(Format('%s <%s>', [Fullname, EMail]));
+      LogLine(Format('%s <%s>', [Fullname, EMail]));
   if LastErrorCode <> '' then
-    LogLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
+      LogLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
   if EMail <> '' then
-    LogLine('We now have access')
+      LogLine('We now have access')
   else
-    LogLine('We don''t have access');
+      LogLine('We don''t have access');
 
 end;
 
@@ -388,8 +425,8 @@ function TGoogleOAuth2.GetXOAuth2Base64: string;
 begin
   Result := 'user=%s' + #1 + 'auth=Bearer %s' + #1 + #1;
   Result := Format(Result, [EMail, Access_token]);
-  // Result := EncodeStringBase64(Result);
-  Result := string(EncodeBase64(ansistring(Result)));
+  // Result := SynaCode.EncodeStringBase64(Result);
+  Result := string(synacode.EncodeBase64(ansistring(Result)));
 end;
 
 {$IFDEF USE_SUPEROBJECT}
@@ -404,7 +441,7 @@ begin
     Refresh_token := JSON.S['refresh_token'];
     Access_token := JSON.S['access_token'];
   finally
-    JSON := nil;
+      JSON := nil;
   end;
 end;
 
@@ -418,7 +455,7 @@ begin
     JSON.S['access_token'] := Access_token;
     JSON.SaveTo(token_filename);
   finally
-    JSON := nil;
+      JSON := nil;
   end;
 end;
 
@@ -463,146 +500,185 @@ begin
         SaveToFile(token_filename);
         LogLine('Tokens saved to ' + token_filename);
       finally
-        Free;
+          Free;
       end;
   finally
-    J.Free;
+      J.Free;
   end;
 end;
 {$ENDIF}
+
+
+type
+  THTTPServerThread = class(TThread)
+  private
+    ListenerSocket: TTCPBlockSocket;
+    ConnectionSocket: TTCPBlockSocket;
+  public
+    Authorize_token: String;
+    procedure Execute; override;
+    procedure CancelThread(Sender: TObject; var CanClose: boolean);
+  end;
+
+procedure THTTPServerThread.CancelThread(Sender: TObject; var CanClose: boolean);
+begin
+  Terminate;
+end;
+
+procedure THTTPServerThread.Execute;
+var
+  S: string;
+  method, uri, protocol: string;
+  OutputDataString: string;
+  SendDataString: string;
+begin
+  Authorize_token := '';
+  FreeOnTerminate := False;
+  ListenerSocket := TTCPBlockSocket.Create;
+  ConnectionSocket := TTCPBlockSocket.Create;
+
+  try
+    ListenerSocket.CreateSocket;
+    ListenerSocket.setLinger(True, 10);
+    ListenerSocket.Bind('localhost', '1500');
+    ListenerSocket.Listen;
+    while not terminated do
+    begin
+      Sleep(1000);
+      // Application.ProcessMessages;
+      if ListenerSocket.CanRead(1000) and not terminated then
+      begin
+        ConnectionSocket.Socket := ListenerSocket.Accept;
+
+        // read request line
+        S := string(ConnectionSocket.RecvString(1000));
+        method := fetch(S, ' ');
+        uri := fetch(S, ' ');
+        protocol := fetch(S, ' ');
+
+        // read request headers
+        repeat
+            S := string(ConnectionSocket.RecvString(1000));
+        until S = '';
+
+        // /?code=4/fegArZQDUJqFdoCw-1DU16ohYsoA5116feRuCW0LiuQ
+        // /?error=access_denied
+        Authorize_token := '';
+        if Pos('code=', uri) > 0 then
+        begin
+          Authorize_token := Copy(uri, Pos('code=', uri) + 5);
+        end;
+
+        if Authorize_token = '' then
+        begin
+          SendDataString :=
+            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"'
+            + ' "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">' + CRLF
+            + '<html><center><h1>Something went wrong.<br><br>Application does not have access.<br><br>You can close this page.</h1></center></html>' + CRLF;
+        end
+        else
+        begin
+          SendDataString :=
+            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"'
+            + ' "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">' + CRLF
+            + '<html><center><h1>Application now has access.<br><br>You can close this page.</h1></center></html>' + CRLF;
+        end;
+
+        OutputDataString := 'HTTP/1.0 200' + CRLF;
+        OutputDataString := OutputDataString + 'Content-type: Text/Html' + CRLF;
+        OutputDataString := OutputDataString + 'Content-length: ' + IntTostr(Length(SendDataString)) + CRLF;
+        OutputDataString := OutputDataString + 'Connection: close' + CRLF;
+        OutputDataString := OutputDataString + 'Date: ' + Rfc822DateTime(now) + CRLF;
+        OutputDataString := OutputDataString + 'Server: Synapse' + CRLF;
+        OutputDataString := OutputDataString + '' + CRLF;
+        ConnectionSocket.SendString(ansistring(OutputDataString));
+        ConnectionSocket.SendString(ansistring(SendDataString));
+
+        ConnectionSocket.CloseSocket;
+
+        Terminate;
+      end;
+    end;
+
+  finally
+    ConnectionSocket.Free;
+    ListenerSocket.Free;
+  end;
+
+end;
 
 procedure TGoogleOAuth2.GetAuthorize_token_interactive;
 var
   URL: string;
   Params: string;
   GoUrl: variant;
-  Browser: olevariant;
-  Document: olevariant;
-  Body: olevariant;
-  SearchFor: string;
-  Found: string;
   Scope: string;
-begin
+  ServerThread: THTTPServerThread;
+  dl: TForm;
 
-  Scope := FScopes.DelimitedText;
-  if Scope = '' then
+  function StartBrowser(const FileName: string): boolean;
   begin
-    LogLine('No scope specified in GetAccess');
+    Result := Shellapi.ShellExecute(0, nil, pchar(FileName), nil, nil, 5 { SW_SHOW } ) > 32;
   end;
 
-  URL := AuthorizationUrl;
-  Params := '';
-  Params := Params + 'response_type=' + EncodeURLElement('code');
-  Params := Params + '&client_id=' + EncodeURLElement(FClient_id);
-  Params := Params + '&redirect_uri=' + EncodeURLElement(RedirectUri);
-  Params := Params + '&scope=' + EncodeURLElement(Scope);
-
-  LogLine('Authorizing...');
-  GoUrl := URL + '?' + Params;
-  CoInitialize(nil);
-  Browser := CreateOleObject('InternetExplorer.Application');
+begin
   try
-    try
-      Browser.Visible := True;
-      Browser.AddressBar := False;
-      Browser.Menubar := False;
-      Browser.ToolBar := False;
-      Browser.StatusBar := False;
 
-      Browser.Width := 600;
-      Browser.Height := 600;
-      if Screen.Height > 750 then Browser.Height := 750;
-      Browser.Left := Screen.Width div 2 - Browser.Width div 2;
-      Browser.Top := Screen.Height div 2 - Browser.Height div 2;
-      Browser.Navigate(GoUrl);
-
-      if ForceManualAuth then
-      begin
-        Authorize_token := InputBox('Authentication code', 'Please enter the authorization code', '');
-        if Authorize_token <> '' then
-          DebugLine('Authorization: We have a manual Authorize_token');
-      end
-      else
-      begin
-
-        Sleep(500);
-        Application.ProcessMessages;
-        SearchFor := 'Success code=';
-
-        while (browser.readystate <> 0) and (Pos(SearchFor, Browser.LocationName) <> 1) do
-        begin
-          Sleep(500);
-          Application.ProcessMessages;
-        end;
-        DebugLine('Browser.LocationName: ' + Browser.LocationName);
-
-        // https://developers.google.com/youtube/2.0/developers_guide_protocol_oauth2#OAuth2_Installed_Applications_Flow
-        Found := Browser.LocationName;
-        Authorize_token := Copy(Found, Length(SearchFor) + 1, 1000);
-        DebugLine('Authorization: We have an Authorize_token from the browser-title');
-        DebugLine('Authorization: ' + Authorize_token);
-        // Authorize_token := 'abc'; // for testing the _html
-
-        // always do the html stuff.
-        if (Pos(SearchFor, Browser.LocationName) = 1) then // 'Success code='
-        begin
-          Document := Browser.Document;
-          Body := Document.Body;
-          Found := Body.InnerHtml;
-
-          DebugLine('Browser catched HTML:');
-          DebugLine('---------------------------------------');
-          DebugLine(Found);
-          DebugLine('---------------------------------------');
-
-          // the Success code in the Browsers-title is not always complete
-          // sometimes it is cut off.
-          // todo: check if this is still the case
-
-          // could have been done with RegExp
-          // but this is the only place we need it
-          SearchFor := 'value=';
-          if Pos(SearchFor, Found) > 0 then
-          begin
-            System.Delete(Found, 1, Pos(SearchFor, Found) + Length(SearchFor) - 1);
-            if Pos('>', Found) > 0 then
-            begin
-              Authorize_token_html := Copy(Found, 1, Pos('>', Found) - 1);
-              Authorize_token_html := StringReplace(Authorize_token_html, '"', '', [rfReplaceAll]);
-              Authorize_token_html := StringReplace(Authorize_token_html, #39, '', [rfReplaceAll]);
-              // Authorize_token_html := AnsiDequotedStr(Authorize_token_html, '"');
-            end;
-          end;
-          if Authorize_token_html <> '' then
-          begin
-            DebugLine('Authorization: We have the browser-HTML text');
-            DebugLine('Authorization: ' + Authorize_token_html);
-          end;
-        end;
-
-        if (Authorize_token = '') and (Authorize_token_html <> '') then
-        begin // Make it the main token
-          Authorize_token := Authorize_token_html;
-          Authorize_token_html := '';
-        end;
-
-      end;
-
-      Browser.Quit;
-
-    except
-      on E: Exception do
-      begin
-        DebugLine('Browser closed without confirmation.');
-        DebugLine('Exception: ' + E.Message);
-      end;
+    Scope := FScopes.DelimitedText;
+    if Scope = '' then
+    begin
+      LogLine('No scope specified in GetAccess');
     end;
 
-  finally
-    Browser := Unassigned;
-    CoUnInitialize;
-  end;
+    URL := AuthorizationUrl;
+    Params := '';
+    Params := Params + 'response_type=' + EncodeURLElement('code');
+    Params := Params + '&client_id=' + EncodeURLElement(FClient_id);
+    Params := Params + '&redirect_uri=' + EncodeURLElement(RedirectUri);
+    Params := Params + '&scope=' + EncodeURLElement(Scope);
 
+    LogLine('Authorizing...');
+    GoUrl := URL + '?' + Params;
+
+    ServerThread := THTTPServerThread.Create(False);
+    try
+      StartBrowser(GoUrl); // open website
+
+      dl := CreateMessageDialog('Waiting for permission', mtInformation, []);
+      try
+
+        dl.Height := Round(80 * (dl.PixelsPerInch / 96));
+        dl.OnCloseQuery := ServerThread.CancelThread;
+        dl.Top := 38;
+        dl.Left := 5;
+        dl.Show;
+        dl.Repaint;
+
+        while not ServerThread.terminated do
+        begin
+          Sleep(1);
+          Application.ProcessMessages;
+        end;
+
+        ServerThread.WaitFor; // blocking met dialog
+
+      finally
+          dl.Free;
+      end;
+
+      Authorize_token := ServerThread.Authorize_token;
+    finally
+        ServerThread.Free;
+    end;
+
+  except
+    // on E: EOleSysError do ;
+    on E: Exception do
+    begin
+      DebugLine('Browser closed without confirmation.');
+      DebugLine('Exception: ' + E.Message);
+    end;
+  end;
 end;
 
 procedure TGoogleOAuth2.GetRefresh_token;
@@ -610,7 +686,7 @@ var
   URL: string;
   Params: string;
   Response: TMemoryStream;
-  JSonStr: string;
+  JSonStr: String;
 begin
   LastErrorCode := '';
   LastErrorMessage := '';
@@ -633,25 +709,18 @@ begin
     begin
       Response.Position := 0;
       JSonStr := string(PansiChar(Response.Memory));
+      DebugLine(JSonStr);
       LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
       LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
       if LastErrorCode <> '' then
-        LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+          LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
       Refresh_token := RetrieveJSONValue(JSonStr, 'refresh_token');
       Access_token := RetrieveJSONValue(JSonStr, 'access_token');
       if Access_token <> '' then
-        LogLine(Format('New refresh- & access_token received (%s, %s)', [Refresh_token, Access_token]));
+          LogLine(Format('New refresh- & access_token received (%s, %s)', [Refresh_token, Access_token]));
     end;
   finally
-    Response.Free;
-  end;
-
-  if (Access_token = '') and (Authorize_token_html <> '') then
-  begin
-    LogLine('Using backup Authentication token (html), maybe the browser-title was cut off.');
-    Authorize_token := Authorize_token_html;
-    Authorize_token_html := '';
-    GetRefresh_token;
+      Response.Free;
   end;
 
 end;
@@ -661,7 +730,7 @@ var
   URL: string;
   Params: string;
   Response: TMemoryStream;
-  JSonStr: string;
+  JSonStr: String;
 begin
   LastErrorCode := '';
   LastErrorMessage := '';
@@ -684,17 +753,17 @@ begin
     begin
       Response.Position := 0;
       JSonStr := string(PansiChar(Response.Memory));
+      DebugLine(JSonStr);
       LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
       LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
       if LastErrorCode <> '' then
-        LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+          LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
       Access_token := RetrieveJSONValue(JSonStr, 'access_token');
       if Access_token <> '' then
-        LogLine(Format('New access_token received (%s)', [Access_token]));
+          LogLine(Format('New access_token received (%s)', [Access_token]));
     end;
   finally
-    Response.Free;
-
+      Response.Free;
   end;
 end;
 
