@@ -28,7 +28,8 @@ https://developers.google.com/identity/protocols/OpenIDConnect#getcredentials
 * Create credentials for a "Installed application"
 * And use the Client ID and Client secret in the example application
 
-Currently the provided credentials do work for the test-application.
+~~Currently the provided credentials do work for the test-application.~~  
+The provided credentials do not work anymore. You need to register your own.
 
 Note: The sope for composing mail `https://www.googleapis.com/auth/gmail.compose` is not
 enhough to mail via smtp. Smtp access requires full mail-access.
