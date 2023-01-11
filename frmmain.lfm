@@ -534,10 +534,10 @@ object Mainform: TMainform
                 OnKeyDown = StringGrid3KeyDown
                 ColWidths = (
                   64
-                  258
-                  258
-                  258
-                  258
+                  254
+                  254
+                  254
+                  253
                 )
               end
               object Edit2: TEdit

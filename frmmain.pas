@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ComCtrls, ExtCtrls, Grids, blcksock, fpjson, jsonConf, LMessages, EditBtn,
-  DbCtrls, Menus, md5,google_drive;
+  DBCtrls, Menus, md5, google_drive;
 
 const
   WM_AFTER_SHOW = WM_USER + 300;
@@ -138,8 +138,7 @@ type
     procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
     procedure StringGrid1DblClick(Sender: TObject);
-    procedure StringGrid3KeyDown(Sender: TObject; var Key: word;
-      Shift: TShiftState);
+    procedure StringGrid3KeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
     procedure StringGrid4DblClick(Sender: TObject);
     procedure TabSheet12Show(Sender: TObject);
     procedure TreeView1Click(Sender: TObject);
@@ -150,7 +149,7 @@ type
     procedure AfterShow(var Msg: TLMessage); message WM_AFTER_SHOW;
   public
     { public declarations }
-    procedure ExporttoFile(sender : tobject);
+    procedure ExporttoFile(Sender: TObject);
     procedure AddToLog(Str: string);
     procedure CheckTokenFile;
     function GetJSONParam(filename, param: string): string;
@@ -159,7 +158,7 @@ type
     // function Download_Gdrive_File(id,auth, target: string): Boolean;
     procedure FillDriveGrid_old;
     procedure FillDriveView;
-    procedure UploadWithResume(fileid: string = '';settings : TUploadSettings = []);
+    procedure UploadWithResume(fileid: string = ''; settings: TUploadSettings = []);
     procedure FillDriveView2;
   end;
 
@@ -173,8 +172,6 @@ uses
   DB,
   google_oauth2,
   google_calendar,
-
-
   smtpsend,
   httpsend,
   synautil,
@@ -185,32 +182,33 @@ uses
 
 { TMainform }
 
-const
-  client_id = '896304839415-nnl5e0smrtakhr9r2l3bno0tes2mrtgk.apps.googleusercontent.com';
-  client_secret = 'dUahHDn3IMyhCIk3qD4tf8E_';
+var
+  client_id: string = '896304839415-nnl5e0smrtakhr9r2l3bno0tes2mrtgk.apps.googleusercontent.com';
+  client_secret: string = 'dUahHDn3IMyhCIk3qD4tf8E_'; // not valid anymore. Change in client.dat file
 
-var  JDrive: Tgoogledrive;
+var
+  JDrive: Tgoogledrive;
 
 function Areyousure: boolean;
-  var
-    i, j, k: integer;
-  var
-    s1, s2: string;
+var
+  i, j, k: integer;
+var
+  s1, s2: string;
+begin
+  randomize;
+  i := random(10);
+  j := random(10);
+  k := i + j;
+  s1 := IntToStr(k);
+  inputquery('Question', 'What is the result of ' + IntToStr(i) + ' + ' + IntToStr(j) + ' ?', s2);
+  if s1 <> s2 then
   begin
-    randomize;
-    i := random(10);
-    j := random(10);
-    k := i + j;
-    s1 := IntToStr(k);
-    inputquery('Question', 'What is the result of ' + IntToStr(i) + ' + ' + IntToStr(j) + ' ?', s2);
-    if s1 <> s2 then
-    begin
-      ShowMessage('Not correct !!!');
-      Result := False;
-    end
-    else
-      Result := True;
-  end;
+    ShowMessage('Not correct !!!');
+    Result := False;
+  end
+  else
+    Result := True;
+end;
 
 
 procedure TMainform.AddToLog(Str: string);
@@ -237,7 +235,36 @@ begin
 end;
 
 procedure TMainform.FormCreate(Sender: TObject);
+var
+  Cfg: TJSONConfig;
 begin
+
+  if not FileExists('client.dat') then
+  begin
+    Cfg := TJSONConfig.Create(nil);
+    try
+      cfg.Formatted:= true;
+      cfg.Filename:= 'client.dat';
+      cfg.SetValue('client_id', client_id);
+      cfg.SetValue('client_secret', client_secret);
+    finally
+      Cfg.Free;
+    end;
+  end
+  else
+  begin
+    Cfg := TJSONConfig.Create(nil);
+    try
+      cfg.Filename:= 'client.dat';
+      client_id := cfg.GetValue('client_id', client_id);
+      client_secret := cfg.GetValue('client_secret', client_secret);
+      Showmessage(client_id);
+    finally
+      Cfg.Free;
+    end;
+  end;
+
+
   Memo1.Clear;
   Memo2.Clear;
 
@@ -253,7 +280,7 @@ begin
   Width := round(Screen.Width * 0.6);
   Height := round(Screen.Height * 0.9) - 100;
   Top := 100;
-  Self.WindowState := wsMaximized; // for now
+  // Self.WindowState := wsMaximized; // for now
 
   edStart.Date := Now;
   edEnd.Date := Now;
@@ -298,9 +325,9 @@ begin
 end;
 
 
-function assignTgdexport(mimetype:string):tgdexportarray;
+function assignTgdexport(mimetype: string): tgdexportarray;
 begin
-  setlength(result,0);
+  setlength(Result, 0);
 {
   if mimeType='application/vnd.google-apps.document' then result := GoogleDocumentsExport;
   if mimeType='application/vnd.google-apps.drawing' then result := GoogleDrawingsExport;
@@ -309,66 +336,76 @@ begin
 }
 end;
 
-procedure TMainform.ExporttoFile(sender : tobject);
-var FileId, mimetype, filename: string;
-var exp : tgdExportArray;
-var fileextension,exportmt:string;
-var index:integer;
+procedure TMainform.ExporttoFile(Sender: TObject);
+var
+  FileId, mimetype, filename: string;
+var
+  exp: tgdExportArray;
+var
+  fileextension, exportmt: string;
+var
+  index: integer;
 begin
 
-  index:=Listview1.ItemIndex;
-  if index<0 then exit;
+  index := Listview1.ItemIndex;
+  if index < 0 then exit;
   if Jdrive.gOAuth2.EMail = '' then exit;
 
   FileId := JDrive.Files[index].fileid;
   mimeType := JDrive.Files[index].mimeType;
-  FileName := JDrive.Files[index].name;
+  FileName := JDrive.Files[index].Name;
 
-  exp:=assignTgdexport(mimetype);
-  fileextension :=exp[(sender as tmenuitem).tag].FileExtension;
-  exportmt :=exp[(sender as tmenuitem).tag].MimeType;
+  exp := assignTgdexport(mimetype);
+  fileextension := exp[(Sender as tmenuitem).tag].FileExtension;
+  exportmt := exp[(Sender as tmenuitem).tag].MimeType;
 
-  JDrive.DownloadFile(fileid,filename+fileextension,'',exportmt);
+  JDrive.DownloadFile(fileid, filename + fileextension, '', exportmt);
 end;
 
 procedure TMainform.ListView1Click(Sender: TObject);
-var i: tmenuitem;
-var j, index: integer;
-var FileId, mimetype: string;
-var exp : tgdExportArray;
+var
+  i: tmenuitem;
+var
+  j, index: integer;
+var
+  FileId, mimetype: string;
+var
+  exp: tgdExportArray;
 begin
 
-  index:=Listview1.ItemIndex;
-  if index<0 then exit;
+  index := Listview1.ItemIndex;
+  if index < 0 then exit;
   if Jdrive.gOAuth2.EMail = '' then exit;
   FileId := JDrive.Files[index].fileid;
   mimeType := JDrive.Files[index].mimeType;
-  popupmenu1.Items[0].enabled:=true;
-  if Pos('application/vnd.google-apps', mimetype) > 0 then popupmenu1.Items[0].enabled:=false;
-  popupmenu1.Items[1].enabled:=false;
+  popupmenu1.Items[0].Enabled := True;
+  if Pos('application/vnd.google-apps', mimetype) > 0 then popupmenu1.Items[0].Enabled := False;
+  popupmenu1.Items[1].Enabled := False;
 
   if FileId <> '' then
   begin
-   if mimeType='application/vnd.google-apps.folder' then exit;
+    if mimeType = 'application/vnd.google-apps.folder' then exit;
   end;
 
-exp:=assignTgdexport(mimetype);
-if length(exp)=0 then exit;
+  exp := assignTgdexport(mimetype);
+  if length(exp) = 0 then exit;
 
-  with popupmenu1.Items[1] do begin
-  clear;
-  for j:=0 to length(exp) - 1 do begin
-  i:=Tmenuitem.create(popupmenu1.Items[1]);
-  i.Caption:='Export to ' + exp[j].Description;
-  i.Tag:=j;
-  i.OnClick:=@exporttofile;
-  popupmenu1.Items[1].Add(i);
-  end;
+  with popupmenu1.Items[1] do
+  begin
+    Clear;
+    for j := 0 to length(exp) - 1 do
+    begin
+      i := Tmenuitem.Create(popupmenu1.Items[1]);
+      i.Caption := 'Export to ' + exp[j].Description;
+      i.Tag := j;
+      i.OnClick := @exporttofile;
+      popupmenu1.Items[1].Add(i);
+    end;
   end;
 
-  popupmenu1.Items[1].enabled:=true;
+  popupmenu1.Items[1].Enabled := True;
 
-  end;
+end;
 
 
 
@@ -378,7 +415,7 @@ var
   Filename: string;
   FileId: string;
   A: TGFileRevisions;
-  prop : TCustomproperties;
+  prop: TCustomproperties;
   Rev: integer;
 begin
 
@@ -407,17 +444,18 @@ begin
   Filename := Extractfilepath(ParamStr(0)) + Filename;
   // check for valid filename
 
- try
- with Jdrive do begin
- ClearAllCustomProperties;
- AddCustomProperty(CustomBodyProperties,'name','Filename Test',asstring);
- AddCustomProperty(CustomBodyProperties,'originalFilename','Filename Test',asstring);
- AddCustomProperty(CustomBodyProperties,'trashed','false');
- AddCustomProperty(CustomBodyProperties,'description','Desciption test',asstring);
- AddCustomProperty(CustomBodyProperties,'starred','true');
- AddCustomProperty(CustomQueryProperties,'keepRevisionForever','true');
- SetFileProperties(Fileid);
- end;
+  try
+    with Jdrive do
+    begin
+      ClearAllCustomProperties;
+      AddCustomProperty(CustomBodyProperties, 'name', 'Filename Test', AsString);
+      AddCustomProperty(CustomBodyProperties, 'originalFilename', 'Filename Test', AsString);
+      AddCustomProperty(CustomBodyProperties, 'trashed', 'false');
+      AddCustomProperty(CustomBodyProperties, 'description', 'Desciption test', AsString);
+      AddCustomProperty(CustomBodyProperties, 'starred', 'true');
+      AddCustomProperty(CustomQueryProperties, 'keepRevisionForever', 'true');
+      SetFileProperties(Fileid);
+    end;
   except
   end;
 
@@ -428,7 +466,8 @@ begin
     Memo1.Lines.add(IntToStr(length(A)) + ' revisions found');
     if Length(A) > 0 then
       for Rev := 0 to Length(A) - 1 do
-      begin;
+      begin
+        ;
         StringGrid4.Cells[8, Rev + 1] := A[Rev].revisionid;
         StringGrid4.Cells[6, Rev + 1] := A[Rev].id;
         StringGrid4.Cells[4, Rev + 1] := A[Rev].originalFileName;
@@ -443,9 +482,9 @@ begin
   end;
 end;
 
-procedure TMainform.StringGrid3KeyDown(Sender: TObject; var Key: word;
-  Shift: TShiftState);
-var fileid, revisionid: string;
+procedure TMainform.StringGrid3KeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
+var
+  fileid, revisionid: string;
 begin
 
   if Jdrive.gOAuth2.EMail = '' then exit;
@@ -460,8 +499,8 @@ begin
 end;
 
 procedure TMainform.StringGrid4DblClick(Sender: TObject);
-var fileid, revisionid, filename: string;
-
+var
+  fileid, revisionid, filename: string;
 begin
   with TStringGrid(Sender) do
   begin
@@ -478,7 +517,7 @@ var
   Scopes: GoogleScopeSet;
 begin
   // Onetime authentication
-  // Save tokens to token.dat
+  // Save tokens to tokens.dat
   gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
   try
 
@@ -789,48 +828,48 @@ begin
 
     AddToLog('Busy filling grid');
     SendMessage(StringGrid1.Handle, WM_SETREDRAW, 0, 0);
-    try
-      ds.First;
-      while not ds.EOF do
+  try
+    ds.First;
+    while not ds.EOF do
+    begin
+
+      with StringGrid1 do
       begin
-
-        with StringGrid1 do
-        begin
-          Cells[1, StringGrid1.RowCount - 1] := ds.FieldByName('start').AsString;
-          Cells[2, StringGrid1.RowCount - 1] := ds.FieldByName('end').AsString;
-          Cells[3, StringGrid1.RowCount - 1] := ds.FieldByName('summary').AsString;
-          Cells[4, StringGrid1.RowCount - 1] := ds.FieldByName('htmllink').AsString;
-        end;
-
-        for Q := 1 to 4 do
-        begin
-          nwWidth := StringGrid1.Canvas.TextWidth(
-            StringGrid1.Cells[Q, StringGrid1.RowCount - 1]);
-          if nwWidth > StringGrid1.ColWidths[Q] then
-            StringGrid1.ColWidths[Q] := nwWidth + 20;
-        end;
-        Application.ProcessMessages;
-        StringGrid1.RowCount := StringGrid1.RowCount + 1;
-
-        ds.Next;
+        Cells[1, StringGrid1.RowCount - 1] := ds.FieldByName('start').AsString;
+        Cells[2, StringGrid1.RowCount - 1] := ds.FieldByName('end').AsString;
+        Cells[3, StringGrid1.RowCount - 1] := ds.FieldByName('summary').AsString;
+        Cells[4, StringGrid1.RowCount - 1] := ds.FieldByName('htmllink').AsString;
       end;
 
-      AddToLog('Sorting');
-      SortStringGrid(StringGrid1, 1);
+      for Q := 1 to 4 do
+      begin
+        nwWidth := StringGrid1.Canvas.TextWidth(
+          StringGrid1.Cells[Q, StringGrid1.RowCount - 1]);
+        if nwWidth > StringGrid1.ColWidths[Q] then
+          StringGrid1.ColWidths[Q] := nwWidth + 20;
+      end;
+      Application.ProcessMessages;
+      StringGrid1.RowCount := StringGrid1.RowCount + 1;
 
-      StringGrid1.ColWidths[0] := 10;
-      StringGrid1.ColWidths[4] := 0; // <- also not -1
-      // StringGrid1.Columns[4].Visible := false; // <- why does this give an error ?
-      while (StringGrid1.RowCount > 2) and (StringGrid1.Cells[3, 1] = '') do
-        StringGrid1.DeleteRow(1);
-
-      AddToLog('Done filling grid');
-
-    finally
-      SendMessage(StringGrid1.Handle, WM_SETREDRAW, 1, 0);
-      StringGrid1.Repaint;
-      StringGrid1.SetFocus;
+      ds.Next;
     end;
+
+    AddToLog('Sorting');
+    SortStringGrid(StringGrid1, 1);
+
+    StringGrid1.ColWidths[0] := 10;
+    StringGrid1.ColWidths[4] := 0; // <- also not -1
+    // StringGrid1.Columns[4].Visible := false; // <- why does this give an error ?
+    while (StringGrid1.RowCount > 2) and (StringGrid1.Cells[3, 1] = '') do
+      StringGrid1.DeleteRow(1);
+
+    AddToLog('Done filling grid');
+
+  finally
+    SendMessage(StringGrid1.Handle, WM_SETREDRAW, 1, 0);
+    StringGrid1.Repaint;
+    StringGrid1.SetFocus;
+  end;
 
   finally
     Response.Free;
@@ -861,47 +900,47 @@ begin
     if gOAuth2.EMail = '' then exit;
 
     HTTP := THTTPSend.Create;
-    try
+  try
 
-      json := TJSONObject.Create;
-      dt_start := TJSONObject.Create;
-      dt_end := TJSONObject.Create;
-      try
-        json.Add('summary', edTitle.Text);
-        json.Add('location', edLocation.Text);
-        json.Add('description', edDescription.Text);
-        dt_start.Add('dateTime', FormatDateTime('yyyy-mm-dd', edStart.Date) + 'T' + FormatDateTime('hh:nn:ss', Now));
-        dt_start.Add('timeZone', 'Europe/Amsterdam');
-        dt_end.Add('dateTime', FormatDateTime('yyyy-mm-dd', edStart.Date) + 'T' + FormatDateTime('hh:nn:ss', Now));
-        dt_end.Add('timeZone', 'Europe/Amsterdam');
-        json.Add('start', dt_start);
-        json.Add('end', dt_end);
-        WriteStrToStream(HTTP.Document, ansistring(json.AsJSON));
-      finally
-        json.Free;
-        // dt_start.Free; nope, added to json
-        // dt_end.Free; nope, added to json
-      end;
+    json := TJSONObject.Create;
+    dt_start := TJSONObject.Create;
+    dt_end := TJSONObject.Create;
+  try
+    json.Add('summary', edTitle.Text);
+    json.Add('location', edLocation.Text);
+    json.Add('description', edDescription.Text);
+    dt_start.Add('dateTime', FormatDateTime('yyyy-mm-dd', edStart.Date) + 'T' + FormatDateTime('hh:nn:ss', Now));
+    dt_start.Add('timeZone', 'Europe/Amsterdam');
+    dt_end.Add('dateTime', FormatDateTime('yyyy-mm-dd', edStart.Date) + 'T' + FormatDateTime('hh:nn:ss', Now));
+    dt_end.Add('timeZone', 'Europe/Amsterdam');
+    json.Add('start', dt_start);
+    json.Add('end', dt_end);
+    WriteStrToStream(HTTP.Document, ansistring(json.AsJSON));
+  finally
+    json.Free;
+    // dt_start.Free; nope, added to json
+    // dt_end.Free; nope, added to json
+  end;
 
-      URL := 'https://www.googleapis.com/calendar/v3/calendars/' + gOAuth2.EMail + '/events';
-      HTTP.Headers.Add('Authorization: Bearer ' + gOAuth2.Access_token);
-      HTTP.MimeType := 'application/json; charset=UTF-8';
-      if HTTP.HTTPMethod('POST', URL) then
-      begin
-        if HTTP.ResultCode = 200 then
-          Memo1.Lines.Add('event inserted')
-        else
-          Memo1.Lines.Add('error inserting');
-        Memo2.Lines.LoadFromStream(HTTP.Document);
-      end
+    URL := 'https://www.googleapis.com/calendar/v3/calendars/' + gOAuth2.EMail + '/events';
+    HTTP.Headers.Add('Authorization: Bearer ' + gOAuth2.Access_token);
+    HTTP.MimeType := 'application/json; charset=UTF-8';
+    if HTTP.HTTPMethod('POST', URL) then
+    begin
+      if HTTP.ResultCode = 200 then
+        Memo1.Lines.Add('event inserted')
       else
-      begin
-        Memo1.Lines.Add('error');
-        Memo1.Lines.Add(HTTP.Headers.Text);
-      end;
-    finally
-      HTTP.Free;
+        Memo1.Lines.Add('error inserting');
+      Memo2.Lines.LoadFromStream(HTTP.Document);
+    end
+    else
+    begin
+      Memo1.Lines.Add('error');
+      Memo1.Lines.Add(HTTP.Headers.Text);
     end;
+  finally
+    HTTP.Free;
+  end;
 
   finally
     gOAuth2.Free;
@@ -911,7 +950,7 @@ end;
 procedure TMainform.Button6Click(Sender: TObject);
 begin
 
-Jdrive.cancelcurrent := true;
+  Jdrive.cancelcurrent := True;
 end;
 
 procedure TMainform.Button7Click(Sender: TObject);
@@ -1081,8 +1120,8 @@ var
   Img: TImage;
   IconLink: string;
   ImgLinkList: TStringList;
-  MapId: String;
-  z:integer;
+  MapId: string;
+  z: integer;
 begin
 
   //MapId := '';
@@ -1095,7 +1134,7 @@ begin
   listview1.BeginUpdate;
   ListView1.Clear;
   TreeView1.Images := ImageList1;
- // ListView1.ViewStyle:=vsIcon;
+  // ListView1.ViewStyle:=vsIcon;
   ListView1.MultiSelect := True;
 
   ListView1.LargeImages := nil;
@@ -1107,13 +1146,13 @@ begin
   ImgLinkList := TStringList.Create;
 
 
-  ProgressBar2.Max := length(JDrive.Files)-1;
+  ProgressBar2.Max := length(JDrive.Files) - 1;
 
   AddToLog('Busy filling grid');
   try
-    for z:=0 to length(JDrive.Files)-1 do
+    for z := 0 to length(JDrive.Files) - 1 do
     begin
-      application.processmessages;
+      application.ProcessMessages;
       ProgressBar2.Position := z;
       begin
         ListItem := ListView1.Items.Add;
@@ -1140,7 +1179,7 @@ begin
           end;
         end;
 
-        ListItem.Caption := Jdrive.Files[z].name;
+        ListItem.Caption := Jdrive.Files[z].Name;
         ListItem.SubItems.Add(Jdrive.Files[z].modifiedTime);
         ListItem.SubItems.Add(Jdrive.Files[z].size);
         ListItem.SubItems.Add(Jdrive.Files[z].mimeType);
@@ -1171,7 +1210,7 @@ var
   Img: TImage;
   IconLink: string;
   ImgLinkList: TStringList;
-  MapId: String;
+  MapId: string;
   BookMark: TBookmark;
 begin
 
@@ -1219,10 +1258,10 @@ begin
         end;
         BookMark := JDrive.Bookmark;
         TreeNode := Treeview1.Items.AddChildObject(
-           Treeview1.Items.GetFirstNode, Jdrive.FieldByName('title').AsString, Pointer(Bookmark));
+          Treeview1.Items.GetFirstNode, Jdrive.FieldByName('title').AsString, Pointer(Bookmark));
 
         IconLink := Jdrive.FieldByName('iconLink').AsString;
-        if false and (IconLink <> '') then
+        if False and (IconLink <> '') then
         begin
           TreeNode.ImageIndex := ImgLinkList.IndexOf(IconLink);
           if TreeNode.ImageIndex = -1 then
@@ -1249,7 +1288,7 @@ begin
         and load from internet in a thread
         *)
         IconLink := Jdrive.FieldByName('iconLink').AsString;
-        if true and (IconLink <> '') then
+        if True and (IconLink <> '') then
         begin
           ListItem.ImageIndex := ImgLinkList.IndexOf(IconLink);
           if ListItem.ImageIndex = -1 then
@@ -1307,24 +1346,23 @@ begin
     exit;
 
   Jdrive.Open;
-  if not listmthd.checked then
-    begin
-  Jdrive.Populate();
-  FillDriveView;
-    end
+  if not listmthd.Checked then
+  begin
+    Jdrive.Populate();
+    FillDriveView;
+  end
   else
-    begin
-    JDrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],'root','name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents,md5Checksum');
+  begin
+    JDrive.ListFiles(JDrive.Files, [showpreviousfolder, listparents], 'root', 'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents,md5Checksum');
     FillDriveView2;
-    end;
-
+  end;
 
 end;
 
 procedure TMainform.ListView1DblClick(Sender: TObject);
 var
   ListItem: TListItem;
-  FileId,mimeType: string;
+  FileId, mimeType: string;
   A: TGFileRevisions;
   Rev: integer;
 begin
@@ -1339,34 +1377,37 @@ begin
   FileId := '';
   if (ListView1.Selected.SubItems.Count > 4) then
     FileId := ListView1.Selected.SubItems.Strings[4];
-    mimeType := ListView1.Selected.SubItems.Strings[2];
+  mimeType := ListView1.Selected.SubItems.Strings[2];
 
   if FileId <> '' then
   begin
-   if mimeType='application/vnd.google-apps.folder' then begin
-    Jdrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],FileId,'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents,md5Checksum');
-    FillDriveView2;
-    exit;
+    if mimeType = 'application/vnd.google-apps.folder' then
+    begin
+      Jdrive.ListFiles(JDrive.Files, [showpreviousfolder, listparents], FileId, 'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents,md5Checksum');
+      FillDriveView2;
+      exit;
     end
-    else begin
-    JDrive.DownloadFile(fileid, 'test.pdf','','application/pdf');
-    A := JDrive.GetRevisions(FileId);
-    Memo1.Lines.add(IntToStr(length(A)) + ' revisions found');
-    if Length(A) > 0 then
-      for Rev := Length(A) - 1 downto 0 do
-      begin;
-        ListItem := ListView2.Items.Add;
-        ListItem.Caption := A[Rev].revisionid;
-        ListItem.SubItems.Add(A[Rev].modifiedTime);
-        ListItem.SubItems.Add(A[Rev].originalFileName);
-        ListItem.SubItems.Add(A[Rev].mimetype);
-        ListItem.SubItems.Add(A[Rev].id);
-      end
     else
     begin
-      ListItem := ListView2.Items.Add;
-      ListItem.Caption := 'no revisions';
-    end;
+      JDrive.DownloadFile(fileid, 'test.pdf', '', 'application/pdf');
+      A := JDrive.GetRevisions(FileId);
+      Memo1.Lines.add(IntToStr(length(A)) + ' revisions found');
+      if Length(A) > 0 then
+        for Rev := Length(A) - 1 downto 0 do
+        begin
+          ;
+          ListItem := ListView2.Items.Add;
+          ListItem.Caption := A[Rev].revisionid;
+          ListItem.SubItems.Add(A[Rev].modifiedTime);
+          ListItem.SubItems.Add(A[Rev].originalFileName);
+          ListItem.SubItems.Add(A[Rev].mimetype);
+          ListItem.SubItems.Add(A[Rev].id);
+        end
+      else
+      begin
+        ListItem := ListView2.Items.Add;
+        ListItem.Caption := 'no revisions';
+      end;
     end;
   end
   else
@@ -1396,56 +1437,60 @@ begin
 end;
 
 procedure TMainform.MenuItem1Click(Sender: TObject);
-var FileId, mimetype,originalFilename: string;
-index : integer;
-exp : TGDExportarray;
+var
+  FileId, mimetype, originalFilename: string;
+  index: integer;
+  exp: TGDExportarray;
 begin
-  index:=Listview1.ItemIndex;
-   if index<0 then exit;
-   if Jdrive.gOAuth2.EMail = '' then exit;
-   FileId := JDrive.Files[index].fileid;
-   mimeType := JDrive.Files[index].mimeType;
-   originalFilename := JDrive.Files[index].originalFilename;
+  index := Listview1.ItemIndex;
+  if index < 0 then exit;
+  if Jdrive.gOAuth2.EMail = '' then exit;
+  FileId := JDrive.Files[index].fileid;
+  mimeType := JDrive.Files[index].mimeType;
+  originalFilename := JDrive.Files[index].originalFilename;
   if FileId <> '' then
   begin
-   if Pos('application/vnd.google-apps', mimetype) > 0 then exit
-    else begin
-      JDrive.DownloadResumableFile(JDrive.Files[index],originalfilename);
+    if Pos('application/vnd.google-apps', mimetype) > 0 then exit
+    else
+    begin
+      JDrive.DownloadResumableFile(JDrive.Files[index], originalfilename);
     end;
   end;
 end;
 
 procedure TMainform.MenuItem2Click(Sender: TObject);
 begin
-  showmessage(inttostr(Listview1.itemindex));
-  showmessage(JDrive.Files[Listview1.ItemIndex].parents[0].id);
+  ShowMessage(IntToStr(Listview1.ItemIndex));
+  ShowMessage(JDrive.Files[Listview1.ItemIndex].parents[0].id);
 end;
 
 procedure TMainform.MenuItem4Click(Sender: TObject);
-var FileId, Parentid: string;
-index : integer;
+var
+  FileId, Parentid: string;
+  index: integer;
 begin
-  index:=Listview1.ItemIndex;
-   if index<0 then exit;
-   if Jdrive.gOAuth2.EMail = '' then exit;
-   if not Areyousure then exit;
-   FileId := JDrive.Files[index].fileid;
+  index := Listview1.ItemIndex;
+  if index < 0 then exit;
+  if Jdrive.gOAuth2.EMail = '' then exit;
+  if not Areyousure then exit;
+  FileId := JDrive.Files[index].fileid;
 
-   if length(JDrive.Files[index].parents)>0
-   then
-   ParentId := JDrive.Files[index].parents[0].id
-   else
-   ParentID:='root';
+  if length(JDrive.Files[index].parents) > 0 then
+    ParentId := JDrive.Files[index].parents[0].id
+  else
+    ParentID := 'root';
 
-   Jdrive.DeleteGFile(FileId);
-   JDrive.ListFiles(JDrive.Files,[showpreviousfolder,listparents],parentid,'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents,md5Checksum');
-   FillDriveView2;
+  Jdrive.DeleteGFile(FileId);
+  JDrive.ListFiles(JDrive.Files, [showpreviousfolder, listparents], parentid, 'name,originalFilename,mimeType,id,size,modifiedTime,iconLink,parents,md5Checksum');
+  FillDriveView2;
 
 end;
 
 procedure TMainform.Button2Click(Sender: TObject);
-var files: TGfiles;
-var i: integer;
+var
+  files: TGfiles;
+var
+  i: integer;
 begin
   StringGrid3.Options := StringGrid3.Options + [goRowSelect];
   StringGrid3.ColCount := 9;
@@ -1479,7 +1524,7 @@ begin
       with StringGrid3 do
       begin
         Mainform.Memo1.Lines.add('Processing ...' + IntToStr(i + 1));
-        Cells[1, StringGrid3.RowCount - 1] := files[i].name;
+        Cells[1, StringGrid3.RowCount - 1] := files[i].Name;
         Cells[2, StringGrid3.RowCount - 1] := files[i].createdTime;
         Cells[3, StringGrid3.RowCount - 1] := files[i].modifiedTime;
         Cells[4, StringGrid3.RowCount - 1] := files[i].originalFilename;
@@ -1500,8 +1545,10 @@ begin
 end;
 
 procedure TMainform.Button3Click(Sender: TObject);
-var x: integer;
-var fileid, revisionid: string;
+var
+  x: integer;
+var
+  fileid, revisionid: string;
 begin
   if stringgrid4.RowCount = 2 then
   begin
@@ -1526,8 +1573,7 @@ begin
   Memo2.Clear;
 end;
 
-function Gdrivepostfile(const URL, auth, FileName: string; const Data: TStream;
-  const ResultData: TStrings): boolean;
+function Gdrivepostfile(const URL, auth, FileName: string; const Data: TStream; const ResultData: TStrings): boolean;
 var
   HTTP: THTTPSend;
   Bound, s: string;
@@ -1646,7 +1692,7 @@ end;
 
 
 
-procedure TMainform.UploadWithResume(fileid: string = '';settings : TUploadSettings = []);
+procedure TMainform.UploadWithResume(fileid: string = ''; settings: TUploadSettings = []);
 const
   BaseURL = 'https://www.googleapis.com/upload/drive/v3/files';
   Param = '';
@@ -1661,12 +1707,12 @@ const
     Result.Url := '';
     UploadFilename := '';
     with TOpenDialog.Create(nil) do
-      try
-        Execute;
-        UploadFilename := Filename;
-      finally
-        Free;
-      end;
+    try
+      Execute;
+      UploadFilename := Filename;
+    finally
+      Free;
+    end;
 
     if UploadFilename = '' then exit; // aborted
     Result.Description := Edit3.Text;
@@ -1675,7 +1721,8 @@ const
     Result.filename := Uploadfilename;
     Result.description := Edit3.Text;
     Result.url := ''; // not yet
-    Result.md5 := md5print(md5file(UploadFilename));;
+    Result.md5 := md5print(md5file(UploadFilename));
+    ;
 
     Data := TFileStream.Create(UploadFilename, fmOpenRead);
     try
@@ -1732,7 +1779,8 @@ begin
     Answer := 2; // don't foget in case hasuploads is false
 
     if Length(pending) > 0 then
-    begin;
+    begin
+      ;
       Answer := QuestionDlg('Question', 'Previous upload(s) was/were in progress.' + #13 +
         'Do you want to continue, abort or remove pending-status?',
         mtCustom, [1, 'Continue all', 2, 'Upload another file and continue all', 3, 'Remove status'], '');
@@ -1829,13 +1877,15 @@ begin
 end;
 
 procedure TMainform.Button4Click(Sender: TObject);
-var x: integer;
-var fileid: string;
+var
+  x: integer;
+var
+  fileid: string;
 begin
   x := Stringgrid4.Selection.Top;
   fileid := stringgrid4.Cells[6, x];
   if fileid = '' then exit;
-  uploadwithresume(fileid,[keepforever,renamefile]);
+  uploadwithresume(fileid, [keepforever, renamefile]);
 
 end;
 
