@@ -109,9 +109,9 @@ object Mainform: TMainform
         Height = 398
         Top = 270
         Width = 1139
-        ActivePage = TabSheet1
+        ActivePage = TabSheet9
         Align = alClient
-        TabIndex = 0
+        TabIndex = 1
         TabOrder = 1
         object TabSheet1: TTabSheet
           Caption = 'GMail'
@@ -263,6 +263,7 @@ object Mainform: TMainform
                 Top = 8
                 Width = 168
                 Caption = 'Get all contacts'
+                OnClick = btGetContactsClick
                 TabOrder = 0
               end
               object StringGrid2: TStringGrid

@@ -112,6 +112,7 @@ type
     TabSheet9: TTabSheet;
     TreeView1: TTreeView;
     procedure btGetAccessClick(Sender: TObject);
+    procedure btGetContactsClick(Sender: TObject);
     procedure btGetFileListClick(Sender: TObject);
     procedure btSendMailClick(Sender: TObject);
     procedure btRemoveTokensClick(Sender: TObject);
@@ -183,8 +184,8 @@ uses
 { TMainform }
 
 var
-  client_id: string = '896304839415-nnl5e0smrtakhr9r2l3bno0tes2mrtgk.apps.googleusercontent.com';
-  client_secret: string = 'dUahHDn3IMyhCIk3qD4tf8E_'; // not valid anymore. Change in client.dat file
+  client_id: string = '504681931309-gc0n3bqtr0dgp6se1d7ee6pcean7heho.apps.googleusercontent.com';
+  client_secret: string = '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'; // only valid for my own test-user ( 2023-01-12 )
 
 var
   JDrive: Tgoogledrive;
@@ -244,64 +245,44 @@ begin
   ListView1.Clear;
   Treeview1.Items.Clear;
 
-  if not FileExists('client.dat') then
-  begin
-    Cfg := TJSONConfig.Create(nil);
-    try
-      cfg.Formatted:= true;
-      cfg.Filename:= 'client.dat';
-      cfg.SetValue('client_id', client_id);
-      cfg.SetValue('client_secret', client_secret);
-    finally
-      Cfg.Free;
-    end;
-  end
-  else
-  begin
-    Cfg := TJSONConfig.Create(nil);
-    try
-      cfg.Filename:= 'client.dat';
-      client_id := cfg.GetValue('client_id', client_id);
-      client_secret := cfg.GetValue('client_secret', client_secret);
-    finally
-      Cfg.Free;
-    end;
+  Cfg := TJSONConfig.Create(nil);
+  try
+    cfg.Filename:= 'client.json';
+    client_id := cfg.GetValue('installed/client_id', client_id);
+    client_secret := cfg.GetValue('installed/client_secret', client_secret);
+  finally
+    Cfg.Free;
   end;
 
-  if Pos('896304839415', client_id) = 1 then // default client_id
+  if Pos('504681931309', client_id) = 1 then // default client_id
   begin
-    Memo1.Lines.Add('Using client_id from sourcecode (' + client_id + ')');
-    Memo1.Lines.Add('In case of trouble, create your own and put this in client.dat');
+    AddToLog('Using client_id from sourcecode (' + client_id + ')');
+    AddToLog('You need to create your own project and download the client.json');
+    AddToLog('See README.md for information');
   end
   else
   begin
-    Memo1.Lines.Add('Using client_id from file client.dat (' + client_id + ')');
+    AddToLog('Using client_id from file client.json (' + client_id + ')');
   end;
 
   Jdrive := TGoogleDrive.Create(Self, client_id, client_secret);
   Jdrive.Progress := ProgressBar1;
   Jdrive.LogMemo := Memo1;
 
-  //Left := (Screen.Width - round(Screen.Width * 0.8)) div 2;
-  //Top := (Screen.Height - round(Screen.Height * 0.8)) div 2;
   Width := round(Screen.Width * 0.6);
   Height := round(Screen.Height * 0.9) - 100;
   Top := 100;
-  // Self.WindowState := wsMaximized; // for now
 
   edStart.Date := Now;
   edEnd.Date := Now;
 
-  if CheckGroup1.Items.Count > 2 then
-  begin
-    CheckGroup1.Checked[0] := True;
-    CheckGroup1.Checked[1] := True;
-    CheckGroup1.Checked[2] := True;
-    CheckGroup1.CheckEnabled[0] := False;
-    CheckGroup1.CheckEnabled[1] := False;
-  end;
+  CheckGroup1.Checked[0] := True;
+  CheckGroup1.Checked[1] := True;
+  CheckGroup1.Checked[2] := True;
+  CheckGroup1.CheckEnabled[0] := False;
+  CheckGroup1.CheckEnabled[1] := False;
 
-  // PageControl1.ActivePageIndex := 0;
+  PageControl1.ActivePageIndex := 0;
 
   CheckTokenFile;
 
@@ -551,12 +532,17 @@ begin
 
 end;
 
+procedure TMainform.btGetContactsClick(Sender: TObject);
+begin
+  // not implemented yet
+end;
+
 
 procedure TMainform.btRemoveTokensClick(Sender: TObject);
 begin
   if not FileExists('tokens.dat') then
   begin
-    AddToLog('tokens.dat didn''t exist');
+    AddToLog('tokens.dat does not exist');
     exit;
   end;
 

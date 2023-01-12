@@ -29,16 +29,20 @@ https://console.developers.google.com/apis/credentials
 * Wait for the creation of the project until the button "Select Project" is visible
 * Click "Select Project"
 * Click "Enable Apis and Services"
-* Search Gmail
-* Enable "Gmail API"
+* If you want GMail/SMTP access search gmail and Enable "Gmail API"
+* If you want Calendar access search calendar and Enable "Google Calendar API"
+* If you want Drive access search drive and Enable "Google Drive API"
+* If you want Contacts access search contacts and Enable "Contacts API"
 * Click "OAuth consent screen"
 * Choose "External" (Internal is only available for Google Workspace users)
 * Fill out the consent screen
 * Click "Save and continue"
 * At the scopes click "Add or remove scopes"
 * Check ".../auth/userinfo.email" and ".../auth/userinfo.profile" (first 2)
-* In the filter type gmail and press enter
-* Choose the first "https://mail.google.com/"
+* If you want GMail/SMTP access seach gmail (in the filter) and add "https://mail.google.com/"
+* If you want Calendar access search calendar and add https://www.googleapis.com/auth/calendar
+* If you want Drive access search drive and add https://www.googleapis.com/auth/drive
+* If you want Contact access search contacts and add https://www.google.com/m8/feeds
 * Press the "Update" button
 * Click "Save and continue"
 * Click "Add Users" at the "Test users" screen
