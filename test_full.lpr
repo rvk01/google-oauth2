@@ -1,4 +1,4 @@
-program test_oauth2;
+program test_full;
 
 {$mode objfpc}{$H+}
 
@@ -7,7 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, frmMain, google_oauth2, google_calendar, google_drive;
+  Forms, frmMain_Full, google_oauth2, google_calendar, google_drive;
 
 {$R *.res}
 

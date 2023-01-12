@@ -19,20 +19,53 @@ How does it work?
 =================
 
 First of all, for your own project you'll need to create your own credentials.
-(the ones provides here show its own title-header during authentication)
+The ones provides only works for my own test-address/account.
+After you have tested your app you need to go through a pubisch/review process.
 
-https://developers.google.com/identity/protocols/OpenIDConnect#getcredentials
-* Create a project
-* Enable the GMail and Google+ Api
-* Set the details in "Consent screen"
-* Create credentials for a "Installed application"
-* And use the Client ID and Client secret in the example application
+https://console.developers.google.com/apis/credentials
+* Create a "New Project"
+* Give the project a name and click "Create"
+* Select the project and click upper left 3 lines button
+* Wait for the creation of the project until the button "Select Project" is visible
+* Click "Select Project"
+* Click "Enable Apis and Services"
+* Search Gmail
+* Enable "Gmail API"
+* Click "OAuth consent screen"
+* Choose "External" (Internal is only available for Google Workspace users)
+* Fill out the consent screen
+* Click "Save and continue"
+* At the scopes click "Add or remove scopes"
+* Check ".../auth/userinfo.email" and ".../auth/userinfo.profile" (first 2)
+* In the filter type gmail and press enter
+* Choose the first "https://mail.google.com/"
+* Press the "Update" button
+* Click "Save and continue"
+* Click "Add Users" at the "Test users" screen
+* Enter your own e-mail adres as test-user and click "Add"
+* Click "Save and continue"
+* Click "Credentials"
+* Click "Create Credentials"
+* Choose "OAuth client ID"
+* Choose "Desktop app" and name it
+* Click "Create"
+* Click the "Download JSON" and save the .json file
+* Click "Ok"
+
+Now copy the client_secret_xxx.json to client.json in your app directory
+Run the program, click "Remove token.dat" and click "Get Access"
+Choose your test-address account and click continue
+Make sure to check the All mail GMail checkbox in the authentication screen
+and click "Continue"
+
+The program should now give the message "We now have access" in the memo-screen
+You can click the "Send mail" to send a test message
 
 ~~Currently the provided credentials do work for the test-application.~~  
-The provided credentials do not work anymore. You need to register your own.
+The provided credentials do not work for other users. You need to register your own with the prcedure described above.
 
 Note: The sope for composing mail `https://www.googleapis.com/auth/gmail.compose` is not
-enhough to mail via smtp. Smtp access requires full mail-access.
+enhough to mail via smtp. Smtp access requires full mail-access (https://mail.google.com/).
 
 Further Resources
 =================

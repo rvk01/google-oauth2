@@ -8,7 +8,7 @@
         <CompatibilityMode Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <Title Value="test_oauth2"/>
+      <Title Value="test_full"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
     </General>
@@ -41,16 +41,16 @@
     </RequiredPackages>
     <Units Count="6">
       <Unit0>
-        <Filename Value="test_oauth2.lpr"/>
+        <Filename Value="test_full.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>
-        <Filename Value="frmmain.pas"/>
+        <Filename Value="frmmain_full.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="Mainform"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="frmMain"/>
+        <UnitName Value="frmMain_Full"/>
       </Unit1>
       <Unit2>
         <Filename Value="google_oauth2.pas"/>
@@ -74,7 +74,7 @@
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="test_oauth2"/>
+      <Filename Value="test_full"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>

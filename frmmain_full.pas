@@ -1,4 +1,4 @@
-unit frmMain;
+unit frmMain_Full;
 
 {$mode objfpc}{$H+}
 
@@ -239,6 +239,11 @@ var
   Cfg: TJSONConfig;
 begin
 
+  Memo1.Clear;
+  Memo2.Clear;
+  ListView1.Clear;
+  Treeview1.Items.Clear;
+
   if not FileExists('client.dat') then
   begin
     Cfg := TJSONConfig.Create(nil);
@@ -263,12 +268,15 @@ begin
     end;
   end;
 
-
-  Memo1.Clear;
-  Memo2.Clear;
-
-  ListView1.Clear;
-  Treeview1.Items.Clear;
+  if Pos('896304839415', client_id) = 1 then // default client_id
+  begin
+    Memo1.Lines.Add('Using client_id from sourcecode (' + client_id + ')');
+    Memo1.Lines.Add('In case of trouble, create your own and put this in client.dat');
+  end
+  else
+  begin
+    Memo1.Lines.Add('Using client_id from file client.dat (' + client_id + ')');
+  end;
 
   Jdrive := TGoogleDrive.Create(Self, client_id, client_secret);
   Jdrive.Progress := ProgressBar1;
@@ -529,7 +537,11 @@ begin
     gOAuth2.GetAccess(Scopes, True); // <- get from file
 
     if gOAuth2.EMail <> '' then
+    begin
       edSender.Text := format('%s <%s>', [gOAuth2.FullName, gOAuth2.EMail]);
+      if (edRecipient.Text = '') or (edRecipient.Text = 'recipient@valid_domain.com') then
+        edRecipient.Text := format('%s', [gOAuth2.EMail]);
+    end;
 
     CheckTokenFile;
 

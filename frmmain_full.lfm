@@ -1,7 +1,7 @@
 object Mainform: TMainform
-  Left = 233
+  Left = 256
   Height = 696
-  Top = 124
+  Top = 195
   Width = 1147
   Caption = 'Google OAuth 2.0 testapp'
   ClientHeight = 696

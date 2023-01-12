@@ -152,17 +152,18 @@ const
 
 {$IFNDEF FPC}
 
-  // we re-declare this one with string so Delphi doesn't give hints about string-conversion
-function EncodeURLElement(const Value: String): String;
+// we re-declare this one with string so Delphi doesn't give hints about string-conversion
+function EncodeURLElement(const Value: string): string;
 begin
   Result := string(EncodeTriplet(ansistring(Value), '%', URLSpecialChar + URLFullSpecialChar));
 end;
+
 {$ENDIF}
 
 {$IFDEF USE_SUPEROBJECT}
 
 
-function RetrieveJSONValue(JSonString, Key: string; FromArray: String = ''; Index: Integer = 0): string;
+function RetrieveJSONValue(JSonString, Key: string; FromArray: string = ''; Index: integer = 0): string;
 var
   obj: ISuperObject;
 begin
@@ -177,10 +178,11 @@ begin
   begin
     if obj.AsObject.Exists(FromArray) then
       if obj.A[FromArray].O[Index].AsObject.Exists(Key) then
-          Result := obj.A[FromArray].O[Index].S[Key];
+        Result := obj.A[FromArray].O[Index].S[Key];
   end;
   Result := AnsiDequotedStr(Result, '"');
 end;
+
 {$ELSE}
 
 function RetrieveJSONValue(JSonString, Key: string; FromArray: string = ''; Index: integer = 0): string;
@@ -273,17 +275,17 @@ end;
 procedure TGoogleOAuth2.LogLine(Value: string);
 begin
   if LogMemo <> nil then
-      LogMemo.Lines.Add(Value);
+    LogMemo.Lines.Add(Value);
   DebugLine(Value);
 end;
 
 procedure TGoogleOAuth2.DebugLine(Value: string);
 begin
-{$IFDEF DEBUG}
+  {$IFDEF DEBUG}
   // Showmessage(Value);
-{$ENDIF}
+   {$ENDIF}
   if DebugMemo <> nil then
-      DebugMemo.Lines.Add(Value);
+    DebugMemo.Lines.Add(Value);
 end;
 
 procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boolean = False);
@@ -295,7 +297,7 @@ procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boo
     URL: string;
     Params: string;
     Response: TStringList;
-    JSonStr: String;
+    JSonStr: string;
   begin
     URL := 'https://www.googleapis.com/oauth2/v3/userinfo';
     Params := 'access_token=' + Access_token;
@@ -308,7 +310,7 @@ procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boo
         LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
         LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
         if LastErrorCode <> '' then
-            LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+          LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
 
         Fullname := RetrieveJSONValue(JSonStr, 'name');
         EMail := RetrieveJSONValue(JSonStr, 'email');
@@ -316,7 +318,7 @@ procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boo
       end;
 
     finally
-        Response.Free;
+      Response.Free;
     end;
   end;
 
@@ -325,7 +327,7 @@ procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boo
     URL: string;
     Params: string;
     Response: TStringList;
-    JSonStr: String;
+    JSonStr: string;
   begin
     URL := 'https://www.googleapis.com/plus/v1/people/me';
     Params := 'access_token=' + Access_token;
@@ -337,7 +339,7 @@ procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boo
         LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
         LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
         if LastErrorCode <> '' then
-            LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+          LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
 
         Fullname := RetrieveJSONValue(JSonStr, 'displayName');
         EMail := RetrieveJSONValue(JSonStr, 'value', 'emails', 0);
@@ -345,7 +347,7 @@ procedure TGoogleOAuth2.GetAccess(Scopes: GoogleScopeSet = []; UseTokenFile: boo
       end;
 
     finally
-        Response.Free;
+      Response.Free;
     end;
   end;
 
@@ -402,21 +404,21 @@ begin
       begin
         Tokens_refreshed := True; // and correct
         if UseTokenFile then
-            SaveAccessRefreshTokens
+          SaveAccessRefreshTokens
         else
-            LogLine('Please save the access_token');
+          LogLine('Please save the access_token');
       end;
     end;
   end;
 
   if EMail <> '' then
-      LogLine(Format('%s <%s>', [Fullname, EMail]));
+    LogLine(Format('%s <%s>', [Fullname, EMail]));
   if LastErrorCode <> '' then
-      LogLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
+    LogLine(Format('Error: %s - %s', [LastErrorCode, LastErrorMessage]));
   if EMail <> '' then
-      LogLine('We now have access')
+    LogLine('We now have access')
   else
-      LogLine('We don''t have access');
+    LogLine('We don''t have access');
 
 end;
 
@@ -430,8 +432,6 @@ begin
 end;
 
 {$IFDEF USE_SUPEROBJECT}
-
-
 procedure TGoogleOAuth2.LoadAccessRefreshTokens;
 var
   JSON: ISuperObject;
@@ -441,7 +441,7 @@ begin
     Refresh_token := JSON.S['refresh_token'];
     Access_token := JSON.S['access_token'];
   finally
-      JSON := nil;
+    JSON := nil;
   end;
 end;
 
@@ -455,12 +455,11 @@ begin
     JSON.S['access_token'] := Access_token;
     JSON.SaveTo(token_filename);
   finally
-      JSON := nil;
+    JSON := nil;
   end;
 end;
 
 {$ELSE}
-
 
 procedure TGoogleOAuth2.LoadAccessRefreshTokens;
 var
@@ -515,7 +514,7 @@ type
     ListenerSocket: TTCPBlockSocket;
     ConnectionSocket: TTCPBlockSocket;
   public
-    Authorize_token: String;
+    Authorize_token: string;
     procedure Execute; override;
     procedure CancelThread(Sender: TObject; var CanClose: boolean);
   end;
@@ -558,7 +557,7 @@ begin
 
         // read request headers
         repeat
-            S := string(ConnectionSocket.RecvString(1000));
+          S := string(ConnectionSocket.RecvString(1000));
         until S = '';
 
         // /?code=4/fegArZQDUJqFdoCw-1DU16ohYsoA5116feRuCW0LiuQ
@@ -572,21 +571,17 @@ begin
         if Authorize_token = '' then
         begin
           SendDataString :=
-            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"'
-            + ' "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">' + CRLF
-            + '<html><center><h1>Something went wrong.<br><br>Application does not have access.<br><br>You can close this page.</h1></center></html>' + CRLF;
+            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"' + ' "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">' + CRLF + '<html><center><h1>Something went wrong.<br><br>Application does not have access.<br><br>You can close this page.</h1></center></html>' + CRLF;
         end
         else
         begin
           SendDataString :=
-            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"'
-            + ' "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">' + CRLF
-            + '<html><center><h1>Application now has access.<br><br>You can close this page.</h1></center></html>' + CRLF;
+            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"' + ' "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">' + CRLF + '<html><center><h1>Application now has access.<br><br>You can close this page.</h1></center></html>' + CRLF;
         end;
 
         OutputDataString := 'HTTP/1.0 200' + CRLF;
         OutputDataString := OutputDataString + 'Content-type: Text/Html' + CRLF;
-        OutputDataString := OutputDataString + 'Content-length: ' + IntTostr(Length(SendDataString)) + CRLF;
+        OutputDataString := OutputDataString + 'Content-length: ' + IntToStr(Length(SendDataString)) + CRLF;
         OutputDataString := OutputDataString + 'Connection: close' + CRLF;
         OutputDataString := OutputDataString + 'Date: ' + Rfc822DateTime(now) + CRLF;
         OutputDataString := OutputDataString + 'Server: Synapse' + CRLF;
@@ -618,7 +613,7 @@ var
 
   function StartBrowser(const FileName: string): boolean;
   begin
-    Result := Shellapi.ShellExecute(0, nil, pchar(FileName), nil, nil, 5 { SW_SHOW } ) > 32;
+    Result := Shellapi.ShellExecute(0, nil, PChar(FileName), nil, nil, 5 { SW_SHOW }) > 32;
   end;
 
 begin
@@ -641,35 +636,35 @@ begin
     GoUrl := URL + '?' + Params;
 
     ServerThread := THTTPServerThread.Create(False);
-    try
-      StartBrowser(GoUrl); // open website
+  try
+    StartBrowser(GoUrl); // open website
 
-      dl := CreateMessageDialog('Waiting for permission', mtInformation, []);
-      try
+    dl := CreateMessageDialog('Waiting for permission', mtInformation, []);
+  try
 
-        dl.Height := Round(80 * (dl.PixelsPerInch / 96));
-        dl.OnCloseQuery := ServerThread.CancelThread;
-        dl.Top := 38;
-        dl.Left := 5;
-        dl.Show;
-        dl.Repaint;
+    dl.Height := Round(80 * (dl.PixelsPerInch / 96));
+    dl.OnCloseQuery := ServerThread.CancelThread;
+    dl.Top := 38;
+    dl.Left := 5;
+    dl.Show;
+    dl.Repaint;
 
-        while not ServerThread.terminated do
-        begin
-          Sleep(1);
-          Application.ProcessMessages;
-        end;
-
-        ServerThread.WaitFor; // blocking met dialog
-
-      finally
-          dl.Free;
-      end;
-
-      Authorize_token := ServerThread.Authorize_token;
-    finally
-        ServerThread.Free;
+    while not ServerThread.terminated do
+    begin
+      Sleep(1);
+      Application.ProcessMessages;
     end;
+
+    ServerThread.WaitFor; // blocking met dialog
+
+  finally
+    dl.Free;
+  end;
+
+    Authorize_token := ServerThread.Authorize_token;
+  finally
+    ServerThread.Free;
+  end;
 
   except
     // on E: EOleSysError do ;
@@ -686,7 +681,7 @@ var
   URL: string;
   Params: string;
   Response: TMemoryStream;
-  JSonStr: String;
+  JSonStr: string;
 begin
   LastErrorCode := '';
   LastErrorMessage := '';
@@ -708,19 +703,19 @@ begin
     if HttpPostURL(URL, Params, Response) then
     begin
       Response.Position := 0;
-      JSonStr := string(PansiChar(Response.Memory));
+      JSonStr := string(pansichar(Response.Memory));
       DebugLine(JSonStr);
       LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
       LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
       if LastErrorCode <> '' then
-          LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+        LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
       Refresh_token := RetrieveJSONValue(JSonStr, 'refresh_token');
       Access_token := RetrieveJSONValue(JSonStr, 'access_token');
       if Access_token <> '' then
-          LogLine(Format('New refresh- & access_token received (%s, %s)', [Refresh_token, Access_token]));
+        LogLine(Format('New refresh- & access_token received (%s, %s)', [Refresh_token, Access_token]));
     end;
   finally
-      Response.Free;
+    Response.Free;
   end;
 
 end;
@@ -730,7 +725,7 @@ var
   URL: string;
   Params: string;
   Response: TMemoryStream;
-  JSonStr: String;
+  JSonStr: string;
 begin
   LastErrorCode := '';
   LastErrorMessage := '';
@@ -752,18 +747,18 @@ begin
     if HttpPostURL(URL, string(Params), Response) then
     begin
       Response.Position := 0;
-      JSonStr := string(PansiChar(Response.Memory));
+      JSonStr := string(pansichar(Response.Memory));
       DebugLine(JSonStr);
       LastErrorCode := RetrieveJSONValue(JSonStr, 'error.code');
       LastErrorMessage := RetrieveJSONValue(JSonStr, 'error.message');
       if LastErrorCode <> '' then
-          LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
+        LogLine(Format('Error in GetRefresh_token: %s - %s', [LastErrorCode, LastErrorMessage]));
       Access_token := RetrieveJSONValue(JSonStr, 'access_token');
       if Access_token <> '' then
-          LogLine(Format('New access_token received (%s)', [Access_token]));
+        LogLine(Format('New access_token received (%s)', [Access_token]));
     end;
   finally
-      Response.Free;
+    Response.Free;
   end;
 end;
 
