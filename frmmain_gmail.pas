@@ -70,7 +70,7 @@ uses
 
 var
   client_id: string = '504681931309-gc0n3bqtr0dgp6se1d7ee6pcean7heho.apps.googleusercontent.com';
-  client_secret: string = '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'; // valid at 2023-01-12
+  client_secret: string = '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'; // only valid for my own test-user ( 2023-01-12 )
 
 procedure TMainform.AddToLog(Str: string);
 begin
@@ -115,7 +115,8 @@ begin
   if Pos('504681931309', client_id) = 1 then // default client_id
   begin
     AddToLog('Using client_id from sourcecode (' + client_id + ')');
-    AddToLog('In case of trouble, create your own and download the client.json');
+    AddToLog('You need to create your own project and download the client.json');
+    AddToLog('See README.md for information');
   end
   else
   begin
@@ -126,14 +127,11 @@ begin
   Height := round(Screen.Height * 0.9) - 100;
   Top := 100;
 
-  if CheckGroup1.Items.Count > 2 then
-  begin
-    CheckGroup1.Checked[0] := True;
-    CheckGroup1.Checked[1] := True;
-    CheckGroup1.Checked[2] := True;
-    CheckGroup1.CheckEnabled[0] := False;
-    CheckGroup1.CheckEnabled[1] := False;
-  end;
+  CheckGroup1.Checked[0] := True;
+  CheckGroup1.Checked[1] := True;
+  CheckGroup1.Checked[2] := True;
+  CheckGroup1.CheckEnabled[0] := False;
+  CheckGroup1.CheckEnabled[1] := False;
 
   PageControl1.ActivePageIndex := 0;
 
@@ -185,7 +183,7 @@ procedure TMainform.btRemoveTokensClick(Sender: TObject);
 begin
   if not FileExists('tokens.dat') then
   begin
-    AddToLog('tokens.dat didn''t exist');
+    AddToLog('tokens.dat does not exist');
     exit;
   end;
 
