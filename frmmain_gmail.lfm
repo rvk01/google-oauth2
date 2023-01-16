@@ -1,36 +1,36 @@
 object Mainform: TMainform
   Left = 254
-  Height = 696
+  Height = 685
   Top = 181
-  Width = 1147
+  Width = 1156
   Caption = 'Google OAuth 2.0 testapp for SMTP GMail'
-  ClientHeight = 696
-  ClientWidth = 1147
+  ClientHeight = 685
+  ClientWidth = 1156
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   Position = poScreenCenter
   LCLVersion = '2.3.0.0'
   object PageControl6: TPageControl
     Left = 0
-    Height = 696
+    Height = 685
     Top = 0
-    Width = 1147
+    Width = 1156
     ActivePage = TabSheet14
     Align = alClient
     TabIndex = 0
     TabOrder = 0
     object TabSheet14: TTabSheet
       Caption = 'Google Access'
-      ClientHeight = 668
-      ClientWidth = 1139
+      ClientHeight = 657
+      ClientWidth = 1148
       object Panel1: TPanel
         Left = 0
         Height = 270
         Top = 0
-        Width = 1139
+        Width = 1148
         Align = alTop
         ClientHeight = 270
-        ClientWidth = 1139
+        ClientWidth = 1148
         TabOrder = 0
         object btGetAccess: TButton
           Left = 136
@@ -45,7 +45,7 @@ object Mainform: TMainform
           Left = 11
           Height = 111
           Top = 148
-          Width = 1117
+          Width = 1126
           Align = alBottom
           BorderSpacing.Around = 10
           ScrollBars = ssAutoVertical
@@ -73,7 +73,7 @@ object Mainform: TMainform
           Left = 24
           Height = 96
           Top = 48
-          Width = 1095
+          Width = 1104
           Anchors = [akTop, akLeft, akRight]
           AutoFill = True
           Caption = 'Access (scope)'
@@ -86,7 +86,7 @@ object Mainform: TMainform
           ChildSizing.Layout = cclTopToBottomThenLeftToRight
           ChildSizing.ControlsPerLine = 2
           ClientHeight = 76
-          ClientWidth = 1091
+          ClientWidth = 1100
           ColumnLayout = clVerticalThenHorizontal
           Columns = 3
           Items.Strings = (
@@ -105,31 +105,31 @@ object Mainform: TMainform
       end
       object PageControl1: TPageControl
         Left = 0
-        Height = 398
+        Height = 387
         Top = 270
-        Width = 1139
+        Width = 1148
         ActivePage = TabSheet1
         Align = alClient
         TabIndex = 0
         TabOrder = 1
         object TabSheet1: TTabSheet
           Caption = 'GMail'
-          ClientHeight = 370
-          ClientWidth = 1131
+          ClientHeight = 359
+          ClientWidth = 1140
           object PageControl2: TPageControl
             Left = 10
-            Height = 350
+            Height = 339
             Top = 10
-            Width = 1111
-            ActivePage = TabSheet4
+            Width = 1120
+            ActivePage = TabSheet5
             Align = alClient
             BorderSpacing.Around = 10
-            TabIndex = 0
+            TabIndex = 1
             TabOrder = 0
             object TabSheet4: TTabSheet
               Caption = 'New mail'
-              ClientHeight = 322
-              ClientWidth = 1103
+              ClientHeight = 311
+              ClientWidth = 1112
               object Label1: TLabel
                 Left = 144
                 Height = 23
@@ -147,7 +147,7 @@ object Mainform: TMainform
                 Left = 216
                 Height = 23
                 Top = 16
-                Width = 877
+                Width = 886
                 Anchors = [akTop, akLeft, akRight]
                 Enabled = False
                 TabOrder = 0
@@ -170,7 +170,7 @@ object Mainform: TMainform
                 Left = 216
                 Height = 23
                 Top = 48
-                Width = 877
+                Width = 886
                 Anchors = [akTop, akLeft, akRight]
                 TabOrder = 1
                 Text = 'recipient@valid_domain.com'
@@ -192,16 +192,16 @@ object Mainform: TMainform
                 Left = 216
                 Height = 23
                 Top = 80
-                Width = 877
+                Width = 886
                 Anchors = [akTop, akLeft, akRight]
                 TabOrder = 2
                 Text = 'Subject'
               end
               object edBody: TMemo
                 Left = 10
-                Height = 199
+                Height = 188
                 Top = 113
-                Width = 1083
+                Width = 1092
                 Align = alBottom
                 Anchors = [akTop, akLeft, akRight, akBottom]
                 BorderSpacing.Around = 10
@@ -222,18 +222,37 @@ object Mainform: TMainform
             end
             object TabSheet5: TTabSheet
               Caption = 'Inbox'
+              ClientHeight = 311
+              ClientWidth = 1112
+              object btGetInbox: TButton
+                Left = 10
+                Height = 41
+                Top = 15
+                Width = 118
+                Caption = 'Get Inbox Mail'
+                OnClick = btGetInboxClick
+                TabOrder = 0
+              end
+              object StringGrid1: TStringGrid
+                Left = 10
+                Height = 237
+                Top = 64
+                Width = 1095
+                Anchors = [akTop, akLeft, akRight, akBottom]
+                TabOrder = 1
+              end
             end
           end
         end
         object TabSheet8: TTabSheet
           Caption = 'Debug'
-          ClientHeight = 370
-          ClientWidth = 1131
+          ClientHeight = 359
+          ClientWidth = 1140
           object Memo2: TMemo
             Left = 10
-            Height = 315
+            Height = 304
             Top = 45
-            Width = 1111
+            Width = 1120
             Align = alClient
             BorderSpacing.Around = 10
             Lines.Strings = (
@@ -246,7 +265,7 @@ object Mainform: TMainform
             Left = 10
             Height = 25
             Top = 10
-            Width = 1111
+            Width = 1120
             Align = alTop
             BorderSpacing.Around = 10
             Caption = 'Clear debugscreen'

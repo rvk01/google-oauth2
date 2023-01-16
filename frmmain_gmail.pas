@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, blcksock, fpjson, jsonConf;
+  ComCtrls, ExtCtrls, Grids, blcksock, fpjson, jsonConf;
 
 type
 
@@ -18,6 +18,7 @@ type
     btRemoveTokens: TButton;
     btClearLog: TButton;
     btClearDebug: TButton;
+    btGetInbox: TButton;
     CheckGroup1: TCheckGroup;
 
     edBody: TMemo;
@@ -33,12 +34,14 @@ type
     PageControl1: TPageControl;
     PageControl2: TPageControl;
     Panel1: TPanel;
+    StringGrid1: TStringGrid;
     TabSheet1: TTabSheet;
     TabSheet14: TTabSheet;
     TabSheet4: TTabSheet;
     TabSheet5: TTabSheet;
     TabSheet8: TTabSheet;
     procedure btGetAccessClick(Sender: TObject);
+    procedure btGetInboxClick(Sender: TObject);
     procedure btSendMailClick(Sender: TObject);
     procedure btRemoveTokensClick(Sender: TObject);
     procedure btClearLogClick(Sender: TObject);
@@ -62,6 +65,8 @@ implementation
 uses
   google_oauth2,
   smtpsend,
+  imapsend,
+  mimemess,
   synautil;
 
 {$R *.lfm}
@@ -105,7 +110,7 @@ begin
 
   Cfg := TJSONConfig.Create(nil);
   try
-    cfg.Filename:= 'client.json';
+    cfg.Filename := 'client.json';
     client_id := cfg.GetValue('installed/client_id', client_id);
     client_secret := cfg.GetValue('installed/client_secret', client_secret);
   finally
@@ -178,7 +183,6 @@ begin
 
 end;
 
-
 procedure TMainform.btRemoveTokensClick(Sender: TObject);
 begin
   if not FileExists('tokens.dat') then
@@ -209,7 +213,6 @@ type
     function ChallengeError(): string;
   end;
 
-
 function TmySMTPSend.DoXOAuth2(const Value: string): boolean;
 var
   x: integer;
@@ -226,6 +229,84 @@ begin
 end;
 
 function TmySMTPSend.ChallengeError(): string;
+var
+  s: string;
+begin
+  Result := '';
+  Sock.SendString('' + CRLF);
+  repeat
+    s := Sock.RecvString(FTimeout);
+    if Sock.LastError <> 0 then
+      Break;
+    if Result <> '' then
+      Result := Result + CRLF;
+    Result := Result + s;
+  until Pos('-', s) <> 4;
+end;
+
+type
+  TmyIMAPSend = class(TIMAPSend)
+  protected
+    function DoXOAuth2(const Value: string): boolean;
+  public
+    OAuth2: string;
+    function Login: boolean;
+    function ChallengeError(): string;
+  end;
+
+function TmyIMAPSend.DoXOAuth2(const Value: string): boolean;
+var
+  S: string;
+begin
+  S := IMAPcommand('AUTHENTICATE XOAUTH2 ' + Value);
+  Result := S = 'OK';
+  // Showmessage(S);
+  // x := StrToIntDef(Copy(S, 1, 3), 0);
+  // Result := (x = 235);
+end;
+
+
+function TmyIMAPSend.Login: boolean;
+var
+  S: string;
+begin
+  FSelectedFolder := '';
+  FSelectedCount := 0;
+  FSelectedRecent := 0;
+  FSelectedUIDvalidity := 0;
+  Result := False;
+  FAuthDone := False;
+  if not Connect then
+    Exit;
+  S := string(FSock.RecvString(FTimeout));
+  if Pos('* PREAUTH', S) = 1 then
+    FAuthDone := True
+  else
+  if Pos('* OK', S) = 1 then
+    FAuthDone := False
+  else
+    Exit;
+  if Capability then
+  begin
+    // * CAPABILITY IMAP4rev1 UNSELECT IDLE NAMESPACE QUOTA ID XLIST CHILDREN X-GM-EXT-1
+    // XYZZY SASL-IR AUTH=XOAUTH2 AUTH=PLAIN AUTH=PLAIN-CLIENTTOKEN AUTH=OAUTHBEARER AUTH=XOAUTH
+    // Showmessage(FullResult.Text);
+    if Findcap('IMAP4rev1') = '' then
+      Exit;
+    if FAutoTLS and (Findcap('STARTTLS') <> '') then
+      if StartTLS then
+        Capability;
+  end;
+
+  // Alleen dit is gewijzigd
+  if OAuth2 <> '' then
+    Result := DoXOAuth2(OAuth2)
+  else
+    Result := AuthLogin;
+
+end;
+
+function TmyIMAPSend.ChallengeError(): string;
 var
   s: string;
 begin
@@ -340,6 +421,109 @@ begin
     smtp.Free;
     msg_lines.Free;
     btSendMail.Enabled := True;
+  end;
+
+end;
+
+procedure TMainform.btGetInboxClick(Sender: TObject);
+var
+  gOAuth2: TGoogleOAuth2;
+  Imap: TmyIMAPSend;
+  msgs: TStringList;
+  MimeMess: TMimeMess;
+  Ok: boolean;
+  I: integer;
+begin
+
+  StringGrid1.Options := StringGrid1.Options + [goRowSelect];
+  StringGrid1.ColCount := 5;
+  StringGrid1.RowCount := 2;
+  StringGrid1.Cells[1, 0] := 'Date';
+  StringGrid1.Cells[2, 0] := 'From';
+  StringGrid1.Cells[3, 0] := 'Subject';
+  StringGrid1.Cells[4, 0] := 'Size';
+
+  if not FileExists('tokens.dat') then
+  begin
+    // first get all access clicked on Groupbox
+    btGetAccess.Click;
+  end;
+
+  gOAuth2 := TGoogleOAuth2.Create(client_id, client_secret);
+  Imap := TmyIMAPSend.Create;
+  try
+    btGetInbox.Enabled := False;
+
+    // first get oauthToken
+    gOAuth2.LogMemo := Memo1;
+    gOAuth2.DebugMemo := Memo2;
+    gOAuth2.GetAccess([], True); // <- get from file
+    // no need for scope because we should already have access
+    // via the btGetAccess for all the scopes in Groupbox
+    if gOAuth2.EMail = '' then
+      exit;
+
+    CheckTokenFile;
+
+    // https://developers.google.com/gmail/imap_extensions?csw=1
+    Imap.AutoTLS := False;
+
+    // https://myaccount.google.com/apppasswords
+    // no need for password via OAuth2
+    Imap.Username := ''; // xxx@gmail.com
+    Imap.Password := ''; // yyy
+
+    Imap.OAuth2 := gOAuth2.GetXOAuth2Base64;
+    Imap.TargetHost := 'imap.gmail.com';
+    Imap.TargetPort := '993';
+    Imap.FullSSL := True;
+    Imap.Sock.SSL.SSLType := LT_all;
+    // Imap.Sock.SSLDoConnect();
+    if not Imap.Login() then
+    begin
+      Memo1.Lines.Add('Login failed ' + Imap.ChallengeError);
+      exit;
+    end;
+
+    Ok := Imap.SelectROFolder('INBOX'); // Note that GMail is language sensitive
+    if not Ok then Ok := Imap.SelectFolder('[Gmail]/Drafts');
+    if not Ok then
+    begin
+      Memo1.Lines.Add('SelectFolder failed');
+      Imap.Logout();
+      Exit;
+    end;
+
+    msgs := TStringList.Create;
+    MimeMess := TMimeMess.Create;
+    try
+
+      Imap.SearchMess('ALL', msgs);
+      StringGrid1.RowCount := msgs.Count + 1;
+
+      for I := 0 to msgs.Count - 1 do
+      begin
+        Imap.FetchHeader(StrToInt(msgs.Strings[I]), MimeMess.Lines);
+        MimeMess.DecodeMessage;
+        StringGrid1.Cells[1, I + 1] := DateTimeToStr(MimeMess.Header.Date);
+        StringGrid1.Cells[2, I + 1] := MimeMess.Header.From;
+        StringGrid1.Cells[3, I + 1] := MimeMess.Header.Subject;
+        StringGrid1.Cells[4, I + 1] := MimeMess.Header.MessageID;
+      end;
+
+    finally
+      msgs.Free;
+      MimeMess.Free;
+    end;
+
+    StringGrid1.AutoSizeColumns;
+
+    Imap.Logout();
+
+  finally
+    gOAuth2.Free;
+    imap.Free;
+    btGetInbox.Enabled := True;
   end;
 
 end;
